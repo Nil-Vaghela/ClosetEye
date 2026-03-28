@@ -1,0 +1,54 @@
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+*.egg
+
+# ── Environment / Secrets ───────────────────────────────────
+.env
+*.env.local
+*.env.production
+# .env.example is intentionally NOT ignored (safe to commit)
+
+# ── Database ────────────────────────────────────────────────
+*.sqlite3
+*.db
+
+# ── Uploads / Generated files ───────────────────────────────
+backend/uploads/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+
+# ── Node / React Native ────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Expo ────────────────────────────────────────────────────
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# ── Build outputs ───────────────────────────────────────────
+*.tsbuildinfo
+build/
+*.ipa
+*.apk
+*.aab
+
+# ── IDE ─────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

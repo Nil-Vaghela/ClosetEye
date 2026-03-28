@@ -1,31 +1,30 @@
 {
   "expo": {
-    "name": "ClosetEye",
-    "slug": "closeteye",
-    "version": "0.1.0",
+    "name": "ClosetEyeApp",
+    "slug": "ClosetEyeApp",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#1a1a2e"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": false,
-      "bundleIdentifier": "com.closeteye.app",
-      "infoPlist": {
-        "NSCameraUsageDescription": "ClosetEye needs camera access to photograph your clothing items."
-      }
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1a1a2e"
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.closeteye.app",
-      "permissions": ["CAMERA"]
+      "predictiveBackGestureEnabled": false
     },
-    "plugins": ["expo-camera", "expo-image-picker"]
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
   }
 }

@@ -42,7 +42,7 @@ ClosetEye/
 │       │   ├── services/    # API client
 │       │   └── components/
 │       └── App.tsx
-├── docker-compose.yml
+├── docker-compose.ymlr
 └── README.md
 ```
 
