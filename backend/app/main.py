@@ -25,9 +25,9 @@ async def health_check():
     return {"status": "ok", "version": "0.1.0"}
 
 
-# ── Phase 1 routes ──────────────────────────────────────────
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
-app.include_router(wardrobe.router, prefix="/api/v1/wardrobe", tags=["Wardrobe"])
-app.include_router(outfits.router, prefix="/api/v1/outfits", tags=["Outfits"])
+# ── Routes ──────────────────────────────────────────────────
+app.include_router(auth.router,        prefix="/api/v1/auth",        tags=["Auth"])
+app.include_router(wardrobe.router,    prefix="/api/v1/wardrobe",    tags=["Wardrobe"])
+app.include_router(outfits.router,     prefix="/api/v1/outfits",     tags=["Outfits"])
 app.include_router(suggestions.router, prefix="/api/v1/suggestions", tags=["Suggestions"])
-app.include_router(tryon.router, prefix="/api/v1/tryon", tags=["Virtual Try-On"])
+app.include_router(tryon.router,       prefix="/api/v1/tryon",       tags=["Virtual Try-On"])

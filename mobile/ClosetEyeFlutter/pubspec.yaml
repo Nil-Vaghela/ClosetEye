@@ -1,0 +1,42 @@
+name: closeteye
+description: AI-powered digital wardrobe assistant
+version: 1.0.0+1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Firebase — native phone auth, no hacks needed
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.0
+
+  # State management
+  provider: ^6.1.2
+
+  # Networking
+  http: ^1.2.0
+
+  # Secure local storage
+  flutter_secure_storage: ^9.2.2
+
+  # Image
+  image_picker: ^1.1.2
+  cached_network_image: ^3.4.1
+
+  # Utils
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/

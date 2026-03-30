@@ -1,10 +1,10 @@
 # ClosetEye — Product Scrum Board
 ### *"Your closet, reimagined by AI"*
 
-**Theme:** White + Burgundy (#800020) soft light UI
+**Theme:** White + glass morphism soft light UI
 **Platform:** iOS & Android mobile app
-**Backend:** Private API (not published as website)
-**Auth:** Apple Sign In + Google Sign In
+**Backend:** FastAPI + PostgreSQL (Docker Compose), private API
+**Auth:** Firebase Phone Auth (OTP) — iOS & Android
 **Goal:** #1 trending fashion app of the year
 
 > Branch naming: `feature/CE-S{sprint}-{id}-short-description`
@@ -56,23 +56,25 @@ The full loop that makes ClosetEye special:
 
 ---
 
-## Sprint 1 — Authentication & User Profile
-> **Goal:** Sign in with Apple/Google, stay logged in, set up profile.
+## Sprint 1 — Authentication & User Profile ✅ COMPLETE
+> **Goal:** Phone number OTP login via Firebase, stay logged in, set up profile.
+> **Pivot note:** Switched from Apple/Google Sign In → Firebase Phone Auth (OTP) for faster iteration and no App Store review dependency.
 
-| Story ID | Task | Priority | Branch |
+| Story ID | Task | Priority | Status |
 |----------|------|----------|--------|
-| CE-S1-01 | Backend: Google OAuth2 — verify ID token from mobile | 🔴 | `feature/CE-S1-01-google-oauth-backend` |
-| CE-S1-02 | Backend: Apple Sign In — verify identity token | 🔴 | `feature/CE-S1-02-apple-signin-backend` |
-| CE-S1-03 | Backend: `POST /auth/social-login` — returns JWT | 🔴 | `feature/CE-S1-03-social-login-endpoint` |
-| CE-S1-04 | Backend: remove email/password auth (social only) | 🔴 | `feature/CE-S1-04-remove-password-auth` |
-| CE-S1-05 | Mobile: Google Sign In screen UI (white/burgundy) | 🔴 | `feature/CE-S1-05-google-signin-ui` |
-| CE-S1-06 | Mobile: Apple Sign In button (App Store requirement) | 🔴 | `feature/CE-S1-06-apple-signin-ui` |
-| CE-S1-07 | Mobile: store JWT in SecureStore (encrypted) | 🔴 | `feature/CE-S1-07-secure-token-storage` |
-| CE-S1-08 | Mobile: auto-login on app launch if token valid | 🟡 | `feature/CE-S1-08-auto-login` |
-| CE-S1-09 | Mobile: onboarding splash / welcome screen | 🟡 | `feature/CE-S1-09-onboarding-splash` |
-| CE-S1-10 | Mobile: profile setup screen (name, avatar photo) | 🟡 | `feature/CE-S1-10-profile-setup` |
-| CE-S1-11 | Backend: `PATCH /users/me` update profile endpoint | 🟡 | `feature/CE-S1-11-update-profile-api` |
-| CE-S1-12 | Mobile: logout flow + token clear | 🟡 | `feature/CE-S1-12-logout` |
+| CE-S1-01 | Backend: Firebase Admin SDK — verify phone auth ID token | 🔴 | ✅ |
+| CE-S1-02 | Backend: `POST /auth/phone` — create/find user, return JWT | 🔴 | ✅ |
+| CE-S1-03 | Backend: PostgreSQL user model (phone_number, firebase_uid, full_name, avatar_url) | 🔴 | ✅ |
+| CE-S1-04 | Backend: Alembic migration — phone auth schema | 🔴 | ✅ |
+| CE-S1-05 | Backend: `PATCH /auth/profile` — update name & avatar | 🟡 | ✅ |
+| CE-S1-06 | Mobile: login screen UI (glass morphism, phone input) | 🔴 | ✅ |
+| CE-S1-07 | Mobile: OTP screen — 6-digit code entry | 🔴 | ✅ |
+| CE-S1-08 | Mobile: iOS — custom PhoneAuthPlugin (Firebase on main actor, SFSafariViewController reCAPTCHA) | 🔴 | ✅ |
+| CE-S1-09 | Mobile: Android — standard Firebase `verifyPhoneNumber` | 🔴 | ✅ |
+| CE-S1-10 | Mobile: store JWT in SharedPreferences, auto-login on launch | 🔴 | ✅ |
+| CE-S1-11 | Mobile: `AppAuthProvider` (ChangeNotifier) — auth state management | 🔴 | ✅ |
+| CE-S1-12 | Mobile: profile setup screen (name entry, "What should we call you?") | 🟡 | ✅ |
+| CE-S1-13 | Mobile: logout flow + token clear | 🟡 | ✅ |
 
 ---
 
@@ -238,7 +240,7 @@ The full loop that makes ClosetEye special:
 | Sprint | Focus | Tasks | Est. Duration |
 |--------|-------|-------|---------------|
 | S0 | Setup | 7 | ✅ Done |
-| S1 | Auth (Apple + Google) | 12 | 1 week |
+| S1 | Auth (Phone OTP) | 13 | ✅ Done |
 | S2 | Body Model Creation | 9 | 1.5 weeks |
 | S3 | Wardrobe Core (Smart Upload) | 15 | 2 weeks |
 | S4 | Virtual Try-On (Wardrobe) | 10 | 2 weeks |
