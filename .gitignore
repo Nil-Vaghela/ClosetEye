@@ -10,7 +10,8 @@ env/
 
 # ── Environment / Secrets ───────────────────────────────────
 .env
-firebase-service-account.json   # Firebase Admin SDK key — NEVER commit this
+firebase-service-account.json           # Firebase Admin SDK key — NEVER commit this
+*firebase-adminsdk*.json               # Firebase Admin SDK auto-named keys (any project)
 *.env.local
 *.env.production
 # .env.example is intentionally NOT ignored (safe to commit)
