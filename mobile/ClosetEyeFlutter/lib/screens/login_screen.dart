@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen>
 
     try {
       if (Platform.isIOS) {
-        const channel = MethodChannel('closeteye/phone_auth');
+        const channel = MethodChannel('drape/phone_auth');
         final verificationId = await channel.invokeMethod<String>(
           'verifyPhoneNumber', {'phoneNumber': phone});
         if (!mounted) return;
@@ -137,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen>
                   ShaderMask(
                     shaderCallback: (b) => AppColors.accent.createShader(b),
                     child: const Text(
-                      'CLOSETEYE',
+                      'DRAPE',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,

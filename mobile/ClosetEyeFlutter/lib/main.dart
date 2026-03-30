@@ -30,18 +30,18 @@ Future<void> main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppAuthProvider(),
-      child: const ClosetEyeApp(),
+      child: const DrapeApp(),
     ),
   );
 }
 
-class ClosetEyeApp extends StatelessWidget {
-  const ClosetEyeApp({super.key});
+class DrapeApp extends StatelessWidget {
+  const DrapeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ClosetEye',
+      title: 'Drape',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const SplashScreen(),

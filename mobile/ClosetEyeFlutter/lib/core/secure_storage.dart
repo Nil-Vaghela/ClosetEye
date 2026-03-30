@@ -7,8 +7,8 @@ class SecureStorage {
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
 
-  static const _tokenKey = 'closeteye_token';
-  static const _userKey  = 'closeteye_user';
+  static const _tokenKey = 'drape_token';
+  static const _userKey  = 'drape_user';
 
   static Future<void> saveToken(String token) =>
       _storage.write(key: _tokenKey, value: token);

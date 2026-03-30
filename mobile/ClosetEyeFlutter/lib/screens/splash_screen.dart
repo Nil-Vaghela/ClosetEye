@@ -121,7 +121,7 @@ class _SplashScreenState extends State<SplashScreen>
                         shaderCallback: (b) =>
                             AppColors.accent.createShader(b),
                         child: const Text(
-                          'CLOSETEYE',
+                          'DRAPE',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 30,

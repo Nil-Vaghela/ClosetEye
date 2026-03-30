@@ -1,4 +1,4 @@
-# ClosetEye — Product Scrum Board
+# Drape — Product Scrum Board
 ### *"Your closet, reimagined by AI"*
 
 **Theme:** White + glass morphism soft light UI
@@ -14,7 +14,7 @@
 
 ## 🧠 Product Vision (Co-Founder Notes)
 
-The full loop that makes ClosetEye special:
+The full loop that makes Drape special:
 
 ```
 📸 Photo anything (worn / on bed / store shelf)
@@ -253,7 +253,7 @@ The full loop that makes ClosetEye special:
 
 ---
 
-## 🚀 What Makes ClosetEye the Trending App of the Year
+## 🚀 What Makes Drape the Trending App of the Year
 
 | Feature | Why It's Viral |
 |---------|---------------|

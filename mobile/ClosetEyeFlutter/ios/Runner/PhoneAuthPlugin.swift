@@ -21,7 +21,7 @@ import FirebaseAuth
   @objc static func register(with messenger: FlutterBinaryMessenger) {
     let instance = PhoneAuthPlugin()
     let channel = FlutterMethodChannel(
-      name: "closeteye/phone_auth",
+      name: "drape/phone_auth",
       binaryMessenger: messenger
     )
     channel.setMethodCallHandler { call, result in

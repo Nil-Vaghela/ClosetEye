@@ -1,4 +1,4 @@
-# ClosetEye
+# Drape
 
 **Your AI-powered digital wardrobe assistant.**
 
@@ -21,7 +21,7 @@ Upload photos of your clothes, get outfit suggestions via AI mix-matching, see w
 ## Project Structure
 
 ```
-ClosetEye/
+Drape/
 ├── backend/
 │   ├── app/
 │   │   ├── api/routes/      # auth, wardrobe, outfits, suggestions, tryon
@@ -35,7 +35,7 @@ ClosetEye/
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── mobile/
-│   └── ClosetEyeApp/        # React Native (Expo) app
+│   └── DrapeApp/        # React Native (Expo) app
 │       ├── src/
 │       │   ├── screens/     # Wardrobe, Outfits, Camera, TryOn, Profile
 │       │   ├── navigation/
@@ -67,7 +67,7 @@ alembic upgrade head
 ### Mobile App
 
 ```bash
-cd mobile/ClosetEyeApp
+cd mobile/DrapeApp
 npm install
 npx expo start
 ```
