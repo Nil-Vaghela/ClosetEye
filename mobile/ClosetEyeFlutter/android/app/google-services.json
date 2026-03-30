@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "877575008426",
+    "project_id": "closeteye-c2c03",
+    "storage_bucket": "closeteye-c2c03.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:877575008426:android:faf507f071dae9e9fca0d3",
+        "android_client_info": {
+          "package_name": "com.closeteye.closeteye"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDI-4Nhs2qqDizUPGBONJpHhXVl-9PU4_g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

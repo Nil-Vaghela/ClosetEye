@@ -19,7 +19,8 @@ services:
     depends_on:
       - db
     volumes:
-      - ./backend:/app  # hot reload
+      - ./backend/app:/app/app
+      - ./backend/firebase-service-account.json:/app/firebase-service-account.json
       - uploads:/app/uploads
 
 volumes:

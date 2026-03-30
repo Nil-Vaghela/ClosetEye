@@ -1,22 +1,11 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
 
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str | None = None
-
-
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-
 class UserResponse(BaseModel):
     id: UUID
-    email: str
+    phone_number: str
     full_name: str | None
     avatar_url: str | None
     created_at: datetime
@@ -27,3 +16,5 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    is_new_user: bool = False   # True on first sign-in — mobile shows profile setup screen
+    user: UserResponse
