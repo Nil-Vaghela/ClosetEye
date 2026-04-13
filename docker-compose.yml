@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped      # ← keeps running after terminal close / reboot
     environment:
       POSTGRES_USER: closeteye
       POSTGRES_PASSWORD: closeteye
@@ -12,6 +13,7 @@ services:
 
   backend:
     build: ./backend
+    restart: unless-stopped      # ← auto-restarts on crash; survives terminal close
     ports:
       - "8000:8000"
     env_file:

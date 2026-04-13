@@ -18,8 +18,11 @@ cryptography==43.*
 
 # ── AI / Image processing ──────────────────────────────────
 openai==1.*
+replicate>=0.34.0        # IDM-VTON virtual try-on via Replicate
 httpx==0.28.*
 Pillow==11.*
+rembg==2.*              # Background removal for body silhouette + garment extraction
+onnxruntime==1.19.*     # rembg runtime (CPU inference)
 
 # ── Storage ─────────────────────────────────────────────────
 python-multipart==0.0.*

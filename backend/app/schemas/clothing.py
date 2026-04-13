@@ -27,6 +27,8 @@ class ClothingItemResponse(BaseModel):
     original_image_url: str
     cleaned_image_url: str | None
     style_score: float | None
+    price: float | None = None
+    total_wears: int = 0
     created_at: datetime
 
     model_config = {"from_attributes": True}

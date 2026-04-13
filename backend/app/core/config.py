@@ -4,7 +4,8 @@ from typing import List
 
 class Settings(BaseSettings):
     # ── App ─────────────────────────────────────────────────
-    APP_NAME: str = "ClosetEye"
+    APP_NAME: str = "Drape"
+    BASE_URL: str = "http://localhost:8000"  # override in production with real domain
     DEBUG: bool = True
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
@@ -26,6 +27,7 @@ class Settings(BaseSettings):
 
     # ── External AI APIs ────────────────────────────────────
     OPENAI_API_KEY: str = ""
+    REPLICATE_API_TOKEN: str = ""  # IDM-VTON virtual try-on
     REMOVEBG_API_KEY: str = ""  # for background removal
 
     # ── Storage ─────────────────────────────────────────────

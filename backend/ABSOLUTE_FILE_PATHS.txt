@@ -1,0 +1,307 @@
+================================================================================
+ABSOLUTE FILE PATHS - DRAPE BACKEND IMPLEMENTATION
+================================================================================
+
+PROJECT ROOT: /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/
+
+NEW FILES CREATED (13):
+=======================
+
+SERVICES (3):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/services/file_service.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/services/garment_service.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/services/tryon_service.py
+
+MODELS (2):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/models/shopping.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/models/ootd.py
+
+SCHEMAS (2):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/schemas/shopping.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/schemas/ootd.py
+
+ROUTES (2):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/api/routes/shopping.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/api/routes/ootd.py
+
+MIGRATIONS (3):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/alembic/versions/c3d5f7a9b1e2_shopping_items.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/alembic/versions/d4e6f8c2a0b3_add_price_and_wears.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/alembic/versions/e5f7a9d1b2c4_ootd_logs.py
+
+DOCUMENTATION (2):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/SPRINTS_3_7_IMPLEMENTATION.md
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/FILES_MANIFEST.txt
+
+
+UPDATED FILES (10):
+===================
+
+SERVICES (1):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/services/ai_service.py
+
+MODELS (2):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/models/clothing.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/models/user.py
+
+SCHEMAS (2):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/schemas/clothing.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/schemas/outfit.py
+
+ROUTES (3):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/api/routes/wardrobe.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/api/routes/tryon.py
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/api/routes/suggestions.py
+
+CORE (2):
+  /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/main.py
+
+
+KEY FILE RELATIONSHIPS:
+=======================
+
+File Service → Used by:
+  - wardrobe.py (upload + delete)
+  - shopping.py (upload + delete)
+  - tryon.py (save preview)
+
+Garment Service → Used by:
+  - wardrobe.py (full pipeline)
+  - shopping.py (same pipeline)
+
+AI Service → Used by:
+  - wardrobe.py (attributes, analysis)
+  - suggestions.py (outfit generation)
+  - tryon.py (scoring)
+  - shopping.py (attributes)
+
+Try-On Service → Used by:
+  - tryon.py (preview generation)
+
+Shopping Model ← Referenced by:
+  - shopping.py (route)
+  - tryon.py (mixed try-on)
+
+OOTD Model ← Referenced by:
+  - ootd.py (route)
+  - user.py (relationship)
+
+Clothing Model → Updated with:
+  - price, total_wears fields
+  - Used by all wardrobe operations
+
+User Model → Updated with:
+  - ootd_logs relationship
+  - Links to OOTD logs
+
+
+MIGRATION CHAIN:
+================
+
+Previous: b2c4e6f8a1d3_body_model_fields.py
+
+↓ Revises
+
+c3d5f7a9b1e2_shopping_items.py
+  - Creates: shopping_items table
+  - Columns: id, owner_id, name, category, color_primary, original_image_url, cleaned_image_url, expires_at, created_at
+
+↓ Revises
+
+d4e6f8c2a0b3_add_price_and_wears.py
+  - Adds to: clothing_items table
+  - Columns: price (float, nullable), total_wears (int, default 0)
+
+↓ Revises
+
+e5f7a9d1b2c4_ootd_logs.py
+  - Creates: ootd_logs table
+  - Columns: id, user_id, outfit_id, custom_item_ids, logged_date, note, created_at
+  - Indexes: user_id, logged_date
+
+
+ENDPOINT REFERENCE BY FILE:
+===========================
+
+wardrobe.py (10 endpoints):
+  POST   /api/v1/wardrobe/items              (upload_clothing_item)
+  GET    /api/v1/wardrobe/items              (list_clothing_items)
+  GET    /api/v1/wardrobe/items/{id}         (get_clothing_item)
+  PATCH  /api/v1/wardrobe/items/{id}         (update_clothing_item)
+  DELETE /api/v1/wardrobe/items/{id}         (delete_clothing_item)
+  GET    /api/v1/wardrobe/style-dna          (get_style_dna)
+  GET    /api/v1/wardrobe/capsule-score      (get_capsule_score)
+  GET    /api/v1/wardrobe/cost-per-wear      (get_cost_per_wear)
+  GET    /api/v1/wardrobe/gap-analysis       (get_gap_analysis)
+  GET    /api/v1/wardrobe/shopping-suggestions (get_shopping_suggestions)
+
+tryon.py (1 endpoint):
+  POST   /api/v1/tryon/preview               (generate_try_on)
+
+shopping.py (3 endpoints):
+  POST   /api/v1/shopping/items              (upload_shopping_item)
+  GET    /api/v1/shopping/items              (list_shopping_items)
+  DELETE /api/v1/shopping/items/{id}         (delete_shopping_item)
+
+suggestions.py (1 endpoint):
+  GET    /api/v1/suggestions                 (get_outfit_suggestions)
+
+ootd.py (4 endpoints):
+  POST   /api/v1/ootd                        (log_ootd)
+  GET    /api/v1/ootd                        (list_ootd_history)
+  GET    /api/v1/ootd/streak                 (get_streak)
+  GET    /api/v1/ootd/calendar               (get_calendar)
+
+
+IMPORT PATHS FOR QUICK REFERENCE:
+==================================
+
+Services:
+  from app.services.file_service import file_service
+  from app.services.garment_service import extract_garment, dewrinkle_and_clean, PhotoType
+  from app.services.tryon_service import generate_try_on_preview
+  from app.services.ai_service import ai_service
+
+Models:
+  from app.models.shopping import ShoppingItem
+  from app.models.ootd import OOTDLog
+
+Schemas:
+  from app.schemas.shopping import ShoppingItemCreate, ShoppingItemResponse
+  from app.schemas.ootd import OOTDLogCreate, OOTDLogResponse, StreakResponse, CalendarResponse
+
+Routes:
+  from app.api.routes import shopping, ootd
+
+
+DATABASE CONNECTION:
+====================
+
+All models use:
+  from app.core.database import Base
+  from sqlalchemy.orm import Mapped, mapped_column
+  from sqlalchemy import String, DateTime, ForeignKey
+
+All queries use:
+  from sqlalchemy.ext.asyncio import AsyncSession
+  from sqlalchemy import select
+
+
+DEPENDENCIES USED (Already in requirements.txt):
+================================================
+
+Core:
+  fastapi
+  sqlalchemy[asyncio]
+  pydantic
+  asyncpg (PostgreSQL async)
+
+Image Processing:
+  Pillow
+  rembg
+  onnxruntime
+
+AI/APIs:
+  openai
+  httpx
+
+Async I/O:
+  aiofiles
+
+All dependencies are already in requirements.txt - NO NEW PACKAGES NEEDED!
+
+
+CONFIGURATION:
+==============
+
+All settings via: app/core/config.py
+  - OPENAI_API_KEY (enable/disable AI)
+  - BASE_URL (file URL generation)
+  - UPLOAD_DIR (where to save files)
+  - MAX_FILE_SIZE_MB (upload limits)
+  - DATABASE_URL (PostgreSQL connection)
+
+
+TESTING ENTRY POINTS:
+=====================
+
+Services:
+  from app.services.file_service import FileService
+  from app.services.garment_service import detect_photo_type_heuristic, extract_garment, dewrinkle_and_clean
+  from app.services.tryon_service import composite_try_on, generate_try_on_preview
+  from app.services.ai_service import AIService
+
+Models (SQLAlchemy):
+  from app.models.shopping import ShoppingItem
+  from app.models.ootd import OOTDLog
+  from app.models.clothing import ClothingItem
+
+Schemas (Pydantic):
+  All in app/schemas/
+
+Routes (FastAPI):
+  from app.api.routes import shopping, ootd, wardrobe, tryon, suggestions
+
+
+LOGGING CONFIGURATION:
+======================
+
+All services use Python logging:
+  import logging
+  logger = logging.getLogger(__name__)
+
+Log levels used:
+  logger.info()    - Normal operations
+  logger.warning() - Recoverable errors
+  logger.error()   - Failures
+
+
+ASYNC PATTERNS USED:
+====================
+
+All I/O operations:
+  async def function_name(...)
+  async with aiofiles.open(...) as f:
+  async with httpx.AsyncClient() as client:
+  await db.commit()
+  await ai_service.detect_attributes(...)
+
+FastAPI dependencies:
+  Depends(get_db)
+  Depends(get_current_user)
+
+
+ERROR HANDLING PATTERN:
+=======================
+
+try:
+    # Operation
+except HTTPException:
+    raise  # FastAPI exceptions pass through
+except Exception as exc:
+    logger.error(f"Context: {exc}")
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Human-readable message"
+    )
+
+
+QUICK COPY-PASTE COMMANDS:
+==========================
+
+View all new files:
+  find /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend -type f -newer /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend/app/main.py
+
+Check syntax of all files:
+  python3 -m py_compile app/services/file_service.py app/services/garment_service.py app/services/tryon_service.py app/models/shopping.py app/models/ootd.py app/schemas/shopping.py app/schemas/ootd.py app/api/routes/shopping.py app/api/routes/ootd.py app/api/routes/wardrobe.py app/api/routes/tryon.py app/api/routes/suggestions.py app/main.py
+
+Apply migrations:
+  cd /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend
+  alembic upgrade head
+
+Start development server:
+  cd /sessions/keen-friendly-clarke/mnt/Project--ClosetEye/backend
+  uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+
+END OF ABSOLUTE PATHS REFERENCE

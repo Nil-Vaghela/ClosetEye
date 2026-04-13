@@ -49,6 +49,10 @@ class ClothingItem(Base):
     # ── AI-generated embeddings (for mix-match scoring) ─────
     style_score: Mapped[float] = mapped_column(Float, nullable=True)
 
+    # ── Pricing and usage tracking ──────────────────────────────
+    price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    total_wears: Mapped[int] = mapped_column(default=0, nullable=False)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

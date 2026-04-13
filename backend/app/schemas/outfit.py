@@ -6,6 +6,7 @@ from datetime import datetime
 class OutfitCreate(BaseModel):
     name: str | None = None
     occasion: str | None = None
+    preview_image_url: str | None = None
     clothing_item_ids: list[UUID]
 
 
@@ -16,7 +17,7 @@ class OutfitResponse(BaseModel):
     match_score: float | None
     is_ai_suggested: bool
     preview_image_url: str | None
-    created_at: datetime
+    created_at: datetime | None
     clothing_item_ids: list[UUID] = []
 
     model_config = {"from_attributes": True}

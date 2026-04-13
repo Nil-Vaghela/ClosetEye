@@ -1,14 +1,15 @@
 # Drape — Product Scrum Board
 ### *"Your closet, reimagined by AI"*
 
-**Theme:** White + glass morphism soft light UI
+**Theme:** Warm sand + champagne gold — light, airy, premium
 **Platform:** iOS & Android mobile app
 **Backend:** FastAPI + PostgreSQL (Docker Compose), private API
 **Auth:** Firebase Phone Auth (OTP) — iOS & Android
 **Goal:** #1 trending fashion app of the year
 
-> Branch naming: `feature/CE-S{sprint}-{id}-short-description`
-> Example: `feature/CE-S1-01-apple-sign-in`
+> Branch naming: `feature/DR-S{sprint}-{id}-short-description`
+> Example: `feature/DR-S2-01-body-model-onboarding`
+> (Sprint 0–1 used legacy `CE-` prefix, Sprint 2+ uses `DR-` for Drape)
 
 ---
 
@@ -50,9 +51,9 @@ The full loop that makes Drape special:
 | CE-S0-02 | PostgreSQL + Docker Compose setup | ✅ |
 | CE-S0-03 | SQLAlchemy models (User, ClothingItem, Outfit) | ✅ |
 | CE-S0-04 | Alembic migrations — initial tables | ✅ |
-| CE-S0-05 | React Native (Expo) app skeleton | ✅ |
-| CE-S0-06 | 5-tab navigation shell | ✅ |
-| CE-S0-07 | API client (Axios + interceptors) | ✅ |
+| CE-S0-05 | Flutter app skeleton (replaced React Native/Expo decision) | ✅ |
+| CE-S0-06 | 4-tab navigation shell (Home, Wardrobe, Outfits, Profile) | ✅ |
+| CE-S0-07 | API client (Dio + auth interceptor) | ✅ |
 
 ---
 
@@ -78,139 +79,139 @@ The full loop that makes Drape special:
 
 ---
 
-## Sprint 2 — Body Model Creation
+## Sprint 2 — ✅ COMPLETE — Body Model Creation
 > **Goal:** User creates their personal body model used for all try-ons. This is the foundation of the try-on experience — a realistic silhouette, not a generic mannequin.
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S2-01 | Mobile: body model onboarding screen ("Let's build your model") | 🔴 | `feature/CE-S2-01-body-model-onboarding` |
-| CE-S2-02 | Mobile: collect body measurements (height, weight, body type) | 🔴 | `feature/CE-S2-02-body-measurements-form` |
-| CE-S2-03 | Mobile: front-facing reference photo capture for body model | 🔴 | `feature/CE-S2-03-body-photo-capture` |
-| CE-S2-04 | Backend: generate body silhouette from reference photo + measurements | 🔴 | `feature/CE-S2-04-body-silhouette-generation` |
-| CE-S2-05 | Backend: store body model (measurements + processed image) | 🔴 | `feature/CE-S2-05-body-model-storage` |
-| CE-S2-06 | Backend: `POST /users/me/body-model` endpoint | 🔴 | `feature/CE-S2-06-body-model-endpoint` |
-| CE-S2-07 | Mobile: body model preview screen (show generated silhouette) | 🟡 | `feature/CE-S2-07-body-model-preview` |
-| CE-S2-08 | Mobile: update body model later (from profile settings) | 🟡 | `feature/CE-S2-08-update-body-model` |
-| CE-S2-09 | Backend: add body model fields to User model (migration) | 🔴 | `feature/CE-S2-09-user-model-migration` |
+| DR-S2-01 | Mobile: body model onboarding screen ("Let's build your model") ✅| 🔴 | `feature/DR-S2-01-body-model-onboarding` |
+| DR-S2-02 | Mobile: collect body measurements (height, weight, body type) ✅| 🔴 | `feature/DR-S2-02-body-measurements-form` |
+| DR-S2-03 | Mobile: front-facing reference photo capture for body model ✅| 🔴 | `feature/DR-S2-03-body-photo-capture` |
+| DR-S2-04 | Backend: generate body silhouette from reference photo + measurements ✅| 🔴 | `feature/DR-S2-04-body-silhouette-generation` |
+| DR-S2-05 | Backend: store body model (measurements + processed image) ✅| 🔴 | `feature/DR-S2-05-body-model-storage` |
+| DR-S2-06 | Backend: `POST /users/me/body-model` endpoint ✅| 🔴 | `feature/DR-S2-06-body-model-endpoint` |
+| DR-S2-07 | Mobile: body model preview screen (show generated silhouette) ✅| 🟡 | `feature/DR-S2-07-body-model-preview` |
+| DR-S2-08 | Mobile: update body model later (from profile settings) ✅| 🟡 | `feature/DR-S2-08-update-body-model` |
+| DR-S2-09 | Backend: add body model fields to User model (migration) ✅| 🔴 | `feature/DR-S2-09-user-model-migration` |
 
 ---
 
-## Sprint 3 — Wardrobe Core (Smart Upload)
+## Sprint 3 — ✅ COMPLETE — Wardrobe Core (Smart Upload)
 > **Goal:** User photographs clothes in ANY way — wearing them, on a bed, hanging up — AI extracts the garment cleanly and adds it to the wardrobe.
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S3-01 | Backend: file upload service (local storage / S3) | 🔴 | `feature/CE-S3-01-file-upload-service` |
-| CE-S3-02 | Backend: detect photo type — is person wearing it, or flat lay? | 🔴 | `feature/CE-S3-02-photo-type-detection` |
-| CE-S3-03 | Backend: extract garment from flat-lay / hanger photo (background removal) | 🔴 | `feature/CE-S3-03-flatlay-extraction` |
-| CE-S3-04 | Backend: extract garment from photo of person wearing it (person + cloth segmentation) | 🔴 | `feature/CE-S3-04-worn-photo-extraction` |
-| CE-S3-05 | Backend: dewrinkle + clean up extracted garment image | 🟡 | `feature/CE-S3-05-dewrinkle-pipeline` |
-| CE-S3-06 | Backend: AI attribute detection — color, category, pattern, fabric via OpenAI Vision | 🔴 | `feature/CE-S3-06-attribute-detection` |
-| CE-S3-07 | Backend: auto-fill ClothingItem fields from AI response | 🔴 | `feature/CE-S3-07-auto-fill-item` |
-| CE-S3-08 | Mobile: camera screen — take photo (any style) | 🔴 | `feature/CE-S3-08-camera-capture` |
-| CE-S3-09 | Mobile: gallery picker — choose from photos | 🔴 | `feature/CE-S3-09-gallery-picker` |
-| CE-S3-10 | Mobile: AI processing loader ("Extracting your item...") | 🟡 | `feature/CE-S3-10-processing-loader` |
-| CE-S3-11 | Mobile: item review screen — confirm / edit AI-detected fields | 🔴 | `feature/CE-S3-11-item-review-screen` |
-| CE-S3-12 | Mobile: wardrobe grid screen (masonry layout, white/burgundy) | 🔴 | `feature/CE-S3-12-wardrobe-grid` |
-| CE-S3-13 | Mobile: filter wardrobe by category | 🟡 | `feature/CE-S3-13-wardrobe-filters` |
-| CE-S3-14 | Mobile: delete item (swipe or long-press) | 🟡 | `feature/CE-S3-14-delete-item` |
-| CE-S3-15 | Mobile: empty state ("Add your first item") | 🟢 | `feature/CE-S3-15-empty-state` |
+| DR-S3-01 | Backend: file upload service (local storage / S3) ✅| 🔴 | `feature/DR-S3-01-file-upload-service` |
+| DR-S3-02 | Backend: detect photo type — is person wearing it, or flat lay? ✅| 🔴 | `feature/DR-S3-02-photo-type-detection` |
+| DR-S3-03 | Backend: extract garment from flat-lay / hanger photo (background removal) ✅| 🔴 | `feature/DR-S3-03-flatlay-extraction` |
+| DR-S3-04 | Backend: extract garment from photo of person wearing it (person + cloth segmentation) ✅| 🔴 | `feature/DR-S3-04-worn-photo-extraction` |
+| DR-S3-05 | Backend: dewrinkle + clean up extracted garment image ✅| 🟡 | `feature/DR-S3-05-dewrinkle-pipeline` |
+| DR-S3-06 | Backend: AI attribute detection — color, category, pattern, fabric via OpenAI Vision ✅| 🔴 | `feature/DR-S3-06-attribute-detection` |
+| DR-S3-07 | Backend: auto-fill ClothingItem fields from AI response ✅| 🔴 | `feature/DR-S3-07-auto-fill-item` |
+| DR-S3-08 | Mobile: camera screen — take photo (any style) ✅| 🔴 | `feature/DR-S3-08-camera-capture` |
+| DR-S3-09 | Mobile: gallery picker — choose from photos ✅| 🔴 | `feature/DR-S3-09-gallery-picker` |
+| DR-S3-10 | Mobile: AI processing loader ("Extracting your item...") ✅| 🟡 | `feature/DR-S3-10-processing-loader` |
+| DR-S3-11 | Mobile: item review screen — confirm / edit AI-detected fields ✅| 🔴 | `feature/DR-S3-11-item-review-screen` |
+| DR-S3-12 | Mobile: wardrobe grid screen (masonry layout, warm sand + gold palette) ✅| 🔴 | `feature/DR-S3-12-wardrobe-grid` |
+| DR-S3-13 | Mobile: filter wardrobe by category ✅| 🟡 | `feature/DR-S3-13-wardrobe-filters` |
+| DR-S3-14 | Mobile: delete item (swipe or long-press) ✅| 🟡 | `feature/DR-S3-14-delete-item` |
+| DR-S3-15 | Mobile: empty state ("Add your first item") ✅| 🟢 | `feature/DR-S3-15-empty-state` |
 
 ---
 
-## Sprint 4 — Virtual Try-On (Wardrobe Items)
+## Sprint 4 — ✅ COMPLETE — Virtual Try-On (Wardrobe Items)
 > **Goal:** User selects items from their wardrobe, sees them on their personal body model instantly.
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S4-01 | Backend: pose estimation on body model image | 🔴 | `feature/CE-S4-01-pose-estimation` |
-| CE-S4-02 | Backend: garment warping — fit clothing to body shape | 🔴 | `feature/CE-S4-02-garment-warping` |
-| CE-S4-03 | Backend: composite — layer multiple garments on body model | 🔴 | `feature/CE-S4-03-garment-composite` |
-| CE-S4-04 | Backend: `POST /tryon` endpoint — accepts item IDs, returns preview URL | 🔴 | `feature/CE-S4-04-tryon-endpoint` |
-| CE-S4-05 | Mobile: try-on screen — select items from wardrobe | 🔴 | `feature/CE-S4-05-tryon-item-selector` |
-| CE-S4-06 | Mobile: try-on result — view on your body model | 🔴 | `feature/CE-S4-06-tryon-result-screen` |
-| CE-S4-07 | Mobile: swap individual items in the try-on view | 🟡 | `feature/CE-S4-07-swap-items-tryon` |
-| CE-S4-08 | Mobile: save try-on look as an outfit | 🔴 | `feature/CE-S4-08-save-tryon-as-outfit` |
-| CE-S4-09 | Mobile: save try-on image to camera roll | 🟡 | `feature/CE-S4-09-save-to-camera-roll` |
-| CE-S4-10 | Mobile: loading animation during AI processing | 🟡 | `feature/CE-S4-10-tryon-loading` |
+| DR-S4-01 | Backend: pose estimation on body model image ✅| 🔴 | `feature/DR-S4-01-pose-estimation` |
+| DR-S4-02 | Backend: garment warping — fit clothing to body shape ✅| 🔴 | `feature/DR-S4-02-garment-warping` |
+| DR-S4-03 | Backend: composite — layer multiple garments on body model ✅| 🔴 | `feature/DR-S4-03-garment-composite` |
+| DR-S4-04 | Backend: `POST /tryon` endpoint — accepts item IDs, returns preview URL ✅| 🔴 | `feature/DR-S4-04-tryon-endpoint` |
+| DR-S4-05 | Mobile: try-on screen — select items from wardrobe ✅| 🔴 | `feature/DR-S4-05-tryon-item-selector` |
+| DR-S4-06 | Mobile: try-on result — view on your body model ✅| 🔴 | `feature/DR-S4-06-tryon-result-screen` |
+| DR-S4-07 | Mobile: swap individual items in the try-on view ✅| 🟡 | `feature/DR-S4-07-swap-items-tryon` |
+| DR-S4-08 | Mobile: save try-on look as an outfit ✅| 🔴 | `feature/DR-S4-08-save-tryon-as-outfit` |
+| DR-S4-09 | Mobile: save try-on image to camera roll ✅| 🟡 | `feature/DR-S4-09-save-to-camera-roll` |
+| DR-S4-10 | Mobile: loading animation during AI processing ✅| 🟡 | `feature/DR-S4-10-tryon-loading` |
 
 ---
 
-## Sprint 5 — Shopping Try-On (Try Before You Buy)
+## Sprint 5 — ✅ COMPLETE — Shopping Try-On (Try Before You Buy)
 > **Goal:** User uploads a photo of clothes they're considering buying (from store, Instagram, website), tries them on their body model mixed with items they own — WITHOUT adding to wardrobe.
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S5-01 | Backend: `ShoppingItem` model (temp item, not in wardrobe) — migration | 🔴 | `feature/CE-S5-01-shopping-item-model` |
-| CE-S5-02 | Backend: extract garment from shopping photo (store shelf, mannequin, model wearing it) | 🔴 | `feature/CE-S5-02-shopping-photo-extraction` |
-| CE-S5-03 | Backend: `POST /shopping/items` — upload & process shopping item | 🔴 | `feature/CE-S5-03-shopping-upload-endpoint` |
-| CE-S5-04 | Backend: try-on endpoint supports mixing wardrobe + shopping items | 🔴 | `feature/CE-S5-04-mixed-tryon-endpoint` |
-| CE-S5-05 | Mobile: "Try Before You Buy" section in Try-On tab | 🔴 | `feature/CE-S5-05-shopping-tryon-ui` |
-| CE-S5-06 | Mobile: upload shopping item photo (camera or gallery) | 🔴 | `feature/CE-S5-06-shopping-photo-upload` |
-| CE-S5-07 | Mobile: shopping item staging area ("Considering" shelf) | 🔴 | `feature/CE-S5-07-shopping-staging-shelf` |
-| CE-S5-08 | Mobile: try-on with shopping items mixed with wardrobe items | 🔴 | `feature/CE-S5-08-mixed-tryon-ui` |
-| CE-S5-09 | Mobile: "Add to Wardrobe" button after deciding to buy | 🟡 | `feature/CE-S5-09-move-to-wardrobe` |
-| CE-S5-10 | Mobile: dismiss / clear shopping item | 🟡 | `feature/CE-S5-10-clear-shopping-item` |
-| CE-S5-11 | Backend: auto-expire shopping items after 30 days | 🟢 | `feature/CE-S5-11-shopping-item-expiry` |
+| DR-S5-01 | Backend: `ShoppingItem` model (temp item, not in wardrobe) — migration ✅| 🔴 | `feature/DR-S5-01-shopping-item-model` |
+| DR-S5-02 | Backend: extract garment from shopping photo (store shelf, mannequin, model wearing it) ✅| 🔴 | `feature/DR-S5-02-shopping-photo-extraction` |
+| DR-S5-03 | Backend: `POST /shopping/items` — upload & process shopping item ✅| 🔴 | `feature/DR-S5-03-shopping-upload-endpoint` |
+| DR-S5-04 | Backend: try-on endpoint supports mixing wardrobe + shopping items ✅| 🔴 | `feature/DR-S5-04-mixed-tryon-endpoint` |
+| DR-S5-05 | Mobile: "Try Before You Buy" section in Try-On tab ✅| 🔴 | `feature/DR-S5-05-shopping-tryon-ui` |
+| DR-S5-06 | Mobile: upload shopping item photo (camera or gallery) ✅| 🔴 | `feature/DR-S5-06-shopping-photo-upload` |
+| DR-S5-07 | Mobile: shopping item staging area ("Considering" shelf) ✅| 🔴 | `feature/DR-S5-07-shopping-staging-shelf` |
+| DR-S5-08 | Mobile: try-on with shopping items mixed with wardrobe items ✅| 🔴 | `feature/DR-S5-08-mixed-tryon-ui` |
+| DR-S5-09 | Mobile: "Add to Wardrobe" button after deciding to buy ✅| 🟡 | `feature/DR-S5-09-move-to-wardrobe` |
+| DR-S5-10 | Mobile: dismiss / clear shopping item ✅| 🟡 | `feature/DR-S5-10-clear-shopping-item` |
+| DR-S5-11 | Backend: auto-expire shopping items after 30 days ✅| 🟢 | `feature/DR-S5-11-shopping-item-expiry` |
 
 ---
 
-## Sprint 6 — AI Outfit Engine
+## Sprint 6 — ✅ COMPLETE — AI Outfit Engine
 > **Goal:** AI suggests outfits, scores compatibility, and tells you what to buy to unlock more looks.
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S6-01 | Backend: outfit compatibility scoring (OpenAI Vision) | 🔴 | `feature/CE-S6-01-compatibility-scoring` |
-| CE-S6-02 | Backend: `POST /suggestions` — top 5 outfit suggestions from wardrobe | 🔴 | `feature/CE-S6-02-suggestion-engine` |
-| CE-S6-03 | Backend: occasion-based filtering (work, casual, date night, formal) | 🟡 | `feature/CE-S6-03-occasion-filter` |
-| CE-S6-04 | Backend: season-aware suggestions | 🟡 | `feature/CE-S6-04-season-aware` |
-| CE-S6-05 | Backend: Style DNA — identify user's style profile from wardrobe | 🟢 | `feature/CE-S6-05-style-dna` |
-| CE-S6-06 | Backend: Capsule Score — count unique outfits possible from wardrobe | 🟢 | `feature/CE-S6-06-capsule-score` |
-| CE-S6-07 | Backend: Cost Per Wear tracking (if user adds item price) | 🟢 | `feature/CE-S6-07-cost-per-wear` |
-| CE-S6-08 | Backend: wardrobe gap analysis (what to buy to unlock more combos) | 🔴 | `feature/CE-S6-08-gap-analysis` |
-| CE-S6-09 | Backend: shopping suggestions with color balance reasoning | 🟡 | `feature/CE-S6-09-shopping-suggestions` |
-| CE-S6-10 | Mobile: outfit suggestion feed (swipeable cards) | 🔴 | `feature/CE-S6-10-suggestion-feed` |
-| CE-S6-11 | Mobile: outfit card — items side by side + match score | 🔴 | `feature/CE-S6-11-outfit-card` |
-| CE-S6-12 | Mobile: save outfit to favourites | 🔴 | `feature/CE-S6-12-save-outfit` |
-| CE-S6-13 | Mobile: "What should I wear today?" daily suggestion | 🟡 | `feature/CE-S6-13-daily-suggestion` |
-| CE-S6-14 | Mobile: Style DNA screen ("Your style is 70% minimalist") | 🟢 | `feature/CE-S6-14-style-dna-screen` |
-| CE-S6-15 | Mobile: Capsule Score widget on home/wardrobe screen | 🟢 | `feature/CE-S6-15-capsule-score-widget` |
-| CE-S6-16 | Mobile: Cost Per Wear display on item detail screen | 🟢 | `feature/CE-S6-16-cost-per-wear-ui` |
-| CE-S6-17 | Mobile: shopping suggestions screen with "why this?" explanation | 🟡 | `feature/CE-S6-17-shopping-suggestions-ui` |
+| DR-S6-01 | Backend: outfit compatibility scoring (OpenAI Vision) ✅| 🔴 | `feature/DR-S6-01-compatibility-scoring` |
+| DR-S6-02 | Backend: `POST /suggestions` — top 5 outfit suggestions from wardrobe ✅| 🔴 | `feature/DR-S6-02-suggestion-engine` |
+| DR-S6-03 | Backend: occasion-based filtering (work, casual, date night, formal) ✅| 🟡 | `feature/DR-S6-03-occasion-filter` |
+| DR-S6-04 | Backend: season-aware suggestions ✅| 🟡 | `feature/DR-S6-04-season-aware` |
+| DR-S6-05 | Backend: Style DNA — identify user's style profile from wardrobe ✅| 🟢 | `feature/DR-S6-05-style-dna` |
+| DR-S6-06 | Backend: Capsule Score — count unique outfits possible from wardrobe ✅| 🟢 | `feature/DR-S6-06-capsule-score` |
+| DR-S6-07 | Backend: Cost Per Wear tracking (if user adds item price) ✅| 🟢 | `feature/DR-S6-07-cost-per-wear` |
+| DR-S6-08 | Backend: wardrobe gap analysis (what to buy to unlock more combos) ✅| 🔴 | `feature/DR-S6-08-gap-analysis` |
+| DR-S6-09 | Backend: shopping suggestions with color balance reasoning ✅| 🟡 | `feature/DR-S6-09-shopping-suggestions` |
+| DR-S6-10 | Mobile: outfit suggestion feed (swipeable cards) ✅| 🔴 | `feature/DR-S6-10-suggestion-feed` |
+| DR-S6-11 | Mobile: outfit card — items side by side + match score ✅| 🔴 | `feature/DR-S6-11-outfit-card` |
+| DR-S6-12 | Mobile: save outfit to favourites ✅| 🔴 | `feature/DR-S6-12-save-outfit` |
+| DR-S6-13 | Mobile: "What should I wear today?" daily suggestion ✅| 🟡 | `feature/DR-S6-13-daily-suggestion` |
+| DR-S6-14 | Mobile: Style DNA screen ("Your style is 70% minimalist") ✅| 🟢 | `feature/DR-S6-14-style-dna-screen` |
+| DR-S6-15 | Mobile: Capsule Score widget on home/wardrobe screen ✅| 🟢 | `feature/DR-S6-15-capsule-score-widget` |
+| DR-S6-16 | Mobile: Cost Per Wear display on item detail screen ✅| 🟢 | `feature/DR-S6-16-cost-per-wear-ui` |
+| DR-S6-17 | Mobile: shopping suggestions screen with "why this?" explanation ✅| 🟡 | `feature/DR-S6-17-shopping-suggestions-ui` |
 
 ---
 
-## Sprint 7 — Habit & Engagement Loop
+## Sprint 7 — ✅ COMPLETE — Habit & Engagement Loop
 > **Goal:** Features that bring users back every day and make the app sticky.
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S7-01 | Backend: OOTD (Outfit of the Day) log endpoint | 🔴 | `feature/CE-S7-01-ootd-log-endpoint` |
-| CE-S7-02 | Mobile: OOTD screen — "What are you wearing today?" | 🔴 | `feature/CE-S7-02-ootd-screen` |
-| CE-S7-03 | Mobile: one-tap OOTD logging from suggestion | 🟡 | `feature/CE-S7-03-ootd-quick-log` |
-| CE-S7-04 | Mobile: OOTD history calendar (see what you wore each day) | 🟡 | `feature/CE-S7-04-ootd-history` |
-| CE-S7-05 | Backend: push notification service (Expo Notifications) | 🔴 | `feature/CE-S7-05-push-notifications` |
-| CE-S7-06 | Mobile: daily OOTD reminder notification (user sets time) | 🟡 | `feature/CE-S7-06-daily-reminder` |
-| CE-S7-07 | Mobile: "You haven't worn this in 30 days" nudge notification | 🟢 | `feature/CE-S7-07-unworn-nudge` |
-| CE-S7-08 | Mobile: streak counter (how many days in a row logged OOTD) | 🟢 | `feature/CE-S7-08-streak-counter` |
+| DR-S7-01 | Backend: OOTD (Outfit of the Day) log endpoint ✅| 🔴 | `feature/DR-S7-01-ootd-log-endpoint` |
+| DR-S7-02 | Mobile: OOTD screen — "What are you wearing today?" ✅| 🔴 | `feature/DR-S7-02-ootd-screen` |
+| DR-S7-03 | Mobile: one-tap OOTD logging from suggestion ✅| 🟡 | `feature/DR-S7-03-ootd-quick-log` |
+| DR-S7-04 | Mobile: OOTD history calendar (see what you wore each day) ✅| 🟡 | `feature/DR-S7-04-ootd-history` |
+| DR-S7-05 | Backend: push notification service (Firebase Cloud Messaging + flutter_local_notifications) ✅| 🔴 | `feature/DR-S7-05-push-notifications` |
+| DR-S7-06 | Mobile: daily OOTD reminder notification (user sets time) ✅| 🟡 | `feature/DR-S7-06-daily-reminder` |
+| DR-S7-07 | Mobile: "You haven't worn this in 30 days" nudge notification ✅| 🟢 | `feature/DR-S7-07-unworn-nudge` |
+| DR-S7-08 | Mobile: streak counter (how many days in a row logged OOTD) ✅| 🟢 | `feature/DR-S7-08-streak-counter` |
 
 ---
 
-## Sprint 8 — UI Polish & Design System
-> **Goal:** White + burgundy design system applied consistently. App feels premium.
+## Sprint 8 — ✅ COMPLETE — UI Polish & Design System
+> **Goal:** Warm sand + champagne gold design system (already established in S1) applied consistently across all new screens. App feels luxury and premium throughout.
+> **Note:** Core design system (AppColors, AppTheme, GlassCard, GradientButton, BlobBg, floating pill nav) already built in Sprint 1.
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S8-01 | Define design tokens (colors, typography, spacing, radius) | 🔴 | `feature/CE-S8-01-design-tokens` |
-| CE-S8-02 | Build component library (Button, Card, Input, Tag, Avatar, Badge) | 🔴 | `feature/CE-S8-02-component-library` |
-| CE-S8-03 | Apply design system to Auth screens | 🔴 | `feature/CE-S8-03-polish-auth` |
-| CE-S8-04 | Apply design system to Wardrobe screens | 🔴 | `feature/CE-S8-04-polish-wardrobe` |
-| CE-S8-05 | Apply design system to Try-On screens | 🔴 | `feature/CE-S8-05-polish-tryon` |
-| CE-S8-06 | Apply design system to Outfit / Suggestion screens | 🔴 | `feature/CE-S8-06-polish-outfits` |
-| CE-S8-07 | Custom tab bar icons (SVG, burgundy active state) | 🟡 | `feature/CE-S8-07-tab-icons` |
-| CE-S8-08 | Micro-animations (item upload, swipe cards, loading) | 🟡 | `feature/CE-S8-08-animations` |
-| CE-S8-09 | App icon + splash screen (white/burgundy branding) | 🔴 | `feature/CE-S8-09-app-icon-splash` |
-| CE-S8-10 | Haptic feedback on key interactions | 🟢 | `feature/CE-S8-10-haptics` |
+| DR-S8-01 | Design tokens audit — ensure all screens use AppColors, no hardcoded values ✅| 🔴 | `feature/DR-S8-01-design-tokens-audit` |
+| DR-S8-02 | Extend component library (Tag, Badge, Avatar, BottomSheet) ✅| 🔴 | `feature/DR-S8-02-component-library` |
+| DR-S8-03 | Polish Try-On screens with Drape design system ✅| 🔴 | `feature/DR-S8-03-polish-tryon` |
+| DR-S8-04 | Polish Outfit / Suggestion screens ✅| 🔴 | `feature/DR-S8-04-polish-outfits` |
+| DR-S8-05 | Polish Shopping screens ✅| 🔴 | `feature/DR-S8-05-polish-shopping` |
+| DR-S8-06 | Custom tab bar icons (SVG, gold active state) ✅| 🟡 | `feature/DR-S8-06-tab-icons` |
+| DR-S8-07 | Micro-animations (item upload, swipe cards, loading skeletons) ✅| 🟡 | `feature/DR-S8-07-animations` |
+| DR-S8-08 | App icon + splash screen (Drape branding — warm sand + gold) ✅| 🔴 | `feature/DR-S8-08-app-icon-splash` |
+| DR-S8-09 | Haptic feedback on key interactions ✅| 🟢 | `feature/DR-S8-09-haptics` |
 
 ---
 
@@ -219,19 +220,19 @@ The full loop that makes Drape special:
 
 | Story ID | Task | Priority | Branch |
 |----------|------|----------|--------|
-| CE-S9-01 | Privacy policy (required by Apple + Google) | 🔴 | `feature/CE-S9-01-privacy-policy` |
-| CE-S9-02 | Terms of service | 🔴 | `feature/CE-S9-02-terms-of-service` |
-| CE-S9-03 | App Store screenshots (6.7", 6.1", iPad) | 🔴 | `feature/CE-S9-03-ios-screenshots` |
-| CE-S9-04 | Google Play screenshots + feature graphic | 🔴 | `feature/CE-S9-04-android-screenshots` |
-| CE-S9-05 | Crash reporting — Sentry integration | 🟡 | `feature/CE-S9-05-sentry` |
-| CE-S9-06 | Analytics — track key events (upload, tryon, suggestion, OOTD) | 🟡 | `feature/CE-S9-06-analytics` |
-| CE-S9-07 | EAS Build setup (CI/CD for iOS + Android builds) | 🔴 | `feature/CE-S9-07-eas-build` |
-| CE-S9-08 | Backend: deploy to production (Railway / Render) | 🔴 | `feature/CE-S9-08-production-deploy` |
-| CE-S9-09 | Backend: production secrets + env config | 🔴 | `feature/CE-S9-09-production-env` |
-| CE-S9-10 | TestFlight beta release (iOS) | 🔴 | `feature/CE-S9-10-testflight` |
-| CE-S9-11 | Google Play internal testing | 🔴 | `feature/CE-S9-11-play-testing` |
-| CE-S9-12 | App Store submission | 🔴 | `feature/CE-S9-12-app-store-submit` |
-| CE-S9-13 | Google Play submission | 🔴 | `feature/CE-S9-13-play-store-submit` |
+| DR-S9-01 | Privacy policy (required by Apple + Google) | 🔴 | `feature/DR-S9-01-privacy-policy` |
+| DR-S9-02 | Terms of service | 🔴 | `feature/DR-S9-02-terms-of-service` |
+| DR-S9-03 | App Store screenshots (6.7", 6.1", iPad) | 🔴 | `feature/DR-S9-03-ios-screenshots` |
+| DR-S9-04 | Google Play screenshots + feature graphic | 🔴 | `feature/DR-S9-04-android-screenshots` |
+| DR-S9-05 | Crash reporting — Sentry integration | 🟡 | `feature/DR-S9-05-sentry` |
+| DR-S9-06 | Analytics — track key events (upload, tryon, suggestion, OOTD) | 🟡 | `feature/DR-S9-06-analytics` |
+| DR-S9-07 | Flutter build setup — Fastlane or GitHub Actions CI/CD (iOS + Android) | 🔴 | `feature/DR-S9-07-flutter-cicd` |
+| DR-S9-08 | Backend: deploy to production (Railway / Render) | 🔴 | `feature/DR-S9-08-production-deploy` |
+| DR-S9-09 | Backend: production secrets + env config | 🔴 | `feature/DR-S9-09-production-env` |
+| DR-S9-10 | TestFlight beta release (iOS) | 🔴 | `feature/DR-S9-10-testflight` |
+| DR-S9-11 | Google Play internal testing | 🔴 | `feature/DR-S9-11-play-testing` |
+| DR-S9-12 | App Store submission | 🔴 | `feature/DR-S9-12-app-store-submit` |
+| DR-S9-13 | Google Play submission | 🔴 | `feature/DR-S9-13-play-store-submit` |
 
 ---
 

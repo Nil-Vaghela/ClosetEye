@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/api_client.dart';
@@ -57,6 +58,39 @@ class AppAuthProvider extends ChangeNotifier {
     try {
       final data = await ApiClient.updateProfile(name: name);
       final updated = AppUser.fromJson(data);
+      await SecureStorage.saveUser(updated);
+      _user = updated;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
+  // ── Create / update body model ────────────────────────────────────────────
+  Future<void> createBodyModel({
+    required File photo,
+    required int heightCm,
+    required int weightKg,
+    required String bodyType,
+  }) async {
+    _error = null;
+    try {
+      final data = await ApiClient.createBodyModel(
+        photo: photo,
+        heightCm: heightCm,
+        weightKg: weightKg,
+        bodyType: bodyType,
+      );
+      final updated = _user!.copyWith(
+        bodyPhotoUrl: data['body_photo_url'] as String?,
+        bodySilhouetteUrl: data['body_silhouette_url'] as String?,
+        heightCm: data['height_cm'] as int?,
+        weightKg: data['weight_kg'] as int?,
+        bodyType: data['body_type'] as String?,
+        bodyModelReady: data['body_model_ready'] as bool? ?? true,
+      );
       await SecureStorage.saveUser(updated);
       _user = updated;
       notifyListeners();

@@ -108,9 +108,13 @@ class _LoginScreenState extends State<LoginScreen>
             // ── Hero ────────────────────────────────────────────────────
             Expanded(
               flex: 5,
-              child: Center(
-                child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  const SizedBox(height: 60),
+              child: SafeArea(
+                bottom: false,
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Center(
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  const SizedBox(height: 24),
 
                   // Logo mark
                   Container(
@@ -166,6 +170,8 @@ class _LoginScreenState extends State<LoginScreen>
                     _Pill('Try-on'),
                   ]),
                 ]),
+                  ),
+                ),
               ),
             ),
 

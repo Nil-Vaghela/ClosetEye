@@ -7,6 +7,7 @@ import '../widgets/gradient_button.dart';
 import '../widgets/app_text_field.dart';
 import '../providers/auth_provider.dart';
 import 'home_screen.dart';
+import 'body_model_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   const ProfileSetupScreen({super.key});
@@ -49,8 +50,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     try {
       await context.read<AppAuthProvider>().updateProfile(name);
       if (!mounted) return;
+      // New users → body model setup first, then home
       Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
+          MaterialPageRoute(builder: (_) => const BodyModelScreen()),
           (_) => false);
     } catch (e) {
       if (!mounted) return;
