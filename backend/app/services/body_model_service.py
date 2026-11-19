@@ -21,7 +21,7 @@ import io
 import logging
 from pathlib import Path
 
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageEnhance, ImageOps
 
 logger = logging.getLogger(__name__)
 

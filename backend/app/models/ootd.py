@@ -7,7 +7,7 @@ Used for tracking worn outfits and engagement metrics.
 import uuid
 from datetime import datetime, date, timezone
 
-from sqlalchemy import String, DateTime, Date, ForeignKey, Text
+from sqlalchemy import DateTime, Date, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

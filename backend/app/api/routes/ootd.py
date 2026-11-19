@@ -4,7 +4,7 @@ OOTD Log Router
 Handle outfit-of-the-day logging for engagement tracking.
 """
 import logging
-from datetime import date, datetime, timezone, timedelta
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession

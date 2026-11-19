@@ -1,0 +1,16 @@
+.env
+.env.*
+!.env.example
+*.json
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+uploads/
+secrets/
+tests/
+.pytest_cache/
+*.md
+*.txt
+!requirements.txt
+.DS_Store

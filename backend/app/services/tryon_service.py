@@ -24,7 +24,7 @@ from functools import partial
 import cv2
 import numpy as np
 from app.services import storage
-from PIL import Image, ImageFilter
+from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 

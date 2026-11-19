@@ -10,7 +10,6 @@ Endpoints:
 """
 from __future__ import annotations
 
-import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -18,9 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
 from app.models.user import User
-from app.schemas.user import BodyModelRequest, BodyModelResponse, UserResponse
+from app.schemas.user import BodyModelResponse, UserResponse
 from app.services.body_model_service import generate_silhouette, save_upload
-from app.core.config import settings
 from app.services.image_upload import clean_image_bytes
 from app.services.storage import stable_url
 from app.services.account_service import delete_account

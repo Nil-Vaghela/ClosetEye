@@ -118,7 +118,6 @@ async def check_and_notify_unused_items(
     if await _already_sent_today(db, user_id, "unused_item"):
         return []
 
-    cutoff = date.today() - timedelta(days=UNUSED_ITEM_DAYS)
 
     # Items with low or zero wears — most likely neglected
     items_result = await db.execute(

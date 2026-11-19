@@ -1,7 +1,6 @@
 from uuid import UUID
 import asyncio
 import logging
-from typing import Any
 
 from datetime import timedelta
 
@@ -21,7 +20,7 @@ from app.schemas.clothing import ClothingItemResponse, ClothingItemUpdate
 from app.services.file_service import file_service
 from app.services.garment_service import (
     extract_garment, dewrinkle_and_clean, detect_photo_type_heuristic,
-    crop_item_from_photo, isolate_person, crop_item_by_category,
+    isolate_person, crop_item_by_category,
 )
 from app.services.ai_service import ai_service
 from app.services import quota, storage

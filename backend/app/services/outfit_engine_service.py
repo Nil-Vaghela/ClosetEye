@@ -26,9 +26,8 @@ import httpx
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.services.storage import sign_url
-from app.models.clothing import ClothingItem, ClothingCategory
+from app.models.clothing import ClothingItem
 from app.models.outfit_engine import (
     DailyOutfit,
     OutfitFeedback,

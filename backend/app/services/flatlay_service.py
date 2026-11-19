@@ -23,7 +23,6 @@ import asyncio
 import base64
 import io
 import logging
-from typing import List, Tuple
 
 from app.services import storage
 from PIL import Image
