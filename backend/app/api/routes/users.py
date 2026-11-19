@@ -22,6 +22,8 @@ from app.services.body_model_service import generate_silhouette, save_upload
 from app.services.image_upload import clean_image_bytes
 from app.services.storage import stable_url
 from app.services.account_service import delete_account
+from app.services.avatar_service import generate_avatar
+from app.services import quota
 from fastapi.concurrency import run_in_threadpool
 import logging
 
@@ -90,7 +92,14 @@ async def create_body_model(
     original_path = user_dir / original_filename
     save_upload(image_bytes, original_path)
 
-    # ── 5. Generate silhouette (background removal) ───────────────────────────
+    # ── 5. Personal avatar (digital twin) for try-on; falls back to a silhouette ─
+    await quota.consume(db, current_user.id, "avatar")
+    avatar_bytes = await generate_avatar(image_bytes, height_cm, weight_kg, body_type)
+    avatar_url = None
+    if avatar_bytes:
+        save_upload(avatar_bytes, user_dir / "avatar.png")
+        avatar_url = stable_url(f"body_models/{current_user.id}/avatar.png")
+
     try:
         silhouette_bytes = await run_in_threadpool(generate_silhouette, image_bytes)
     except RuntimeError:
@@ -111,7 +120,8 @@ async def create_body_model(
 
     # ── 8. Persist to DB ──────────────────────────────────────────────────────
     current_user.body_photo_url = body_photo_url
-    current_user.body_silhouette_url = body_silhouette_url
+    current_user.body_silhouette_url = avatar_url or body_silhouette_url
+    current_user.avatar_url = avatar_url
     current_user.height_cm = height_cm
     current_user.weight_kg = weight_kg
     current_user.body_type = body_type
@@ -154,9 +164,10 @@ async def delete_body_model(
 ):
     """Delete the body photo + silhouette any time."""
     from app.services import storage
-    for url in (current_user.body_photo_url, current_user.body_silhouette_url):
+    for url in (current_user.body_photo_url, current_user.body_silhouette_url, current_user.avatar_url):
         storage.delete(url)
     current_user.body_photo_url = None
     current_user.body_silhouette_url = None
+    current_user.avatar_url = None
     current_user.body_model_ready = False
     await db.commit()

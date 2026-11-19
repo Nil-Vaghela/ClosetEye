@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     VERTEX_IMAGE_MODEL: str = "gemini-2.5-flash-image"
     VERTEX_IMAGE_FALLBACK_MODEL: str = "gemini-3-pro-image"  # used when the main model is busy (429)
     IMAGE_PROVIDER: str = "openai"  # product photos + outfit boards: "openai" or "vertex"
+    VERTEX_AVATAR_MODEL: str = "gemini-3-pro-image"  # best identity preservation for the digital twin
+    QUOTA_AVATAR_PER_DAY: int = 3
     VERTEX_TRYON_MODEL: str = "virtual-try-on-001"   # Google's dedicated try-on model
     VERTEX_TRYON_LOCATION: str = "us-central1"
 

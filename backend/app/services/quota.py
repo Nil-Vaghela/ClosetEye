@@ -29,13 +29,14 @@ FEATURES: dict[str, tuple[str, float, str]] = {
     "tryon":       ("QUOTA_TRYON_PER_DAY", 0.25, "You've used today's try ons. More tomorrow!"),
     "flatlay":     ("QUOTA_FLATLAY_PER_DAY", 0.08, "You've made today's outfit boards. More tomorrow!"),
     "llm":         ("QUOTA_LLM_PER_DAY", 0.01, "Our stylist needs a break. Try again tomorrow!"),
+    "avatar":      ("QUOTA_AVATAR_PER_DAY", 0.15, "You've made a few models today. Try again tomorrow!"),
 }
 
 
 # Gemini on Vertex is cheaper per call (approx: flash image ~$0.04/image; flash text fractions of a cent).
 _VERTEX_COST: dict[str, float] = {
     "item_upload": 0.002, "extract": 0.15,  # ~3 garments rendered per scan
-    "tryon": 0.30,  # up to 4 garments per try-on "flatlay": 0.04, "llm": 0.005,
+    "tryon": 0.30,  # up to 4 garments per try-on "flatlay": 0.04, "llm": 0.005, "avatar": 0.15,
 }
 
 

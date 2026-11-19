@@ -769,7 +769,11 @@ async def generate_try_on_preview(
         raise RuntimeError("No clothing items found")
 
     # Read body photo from private storage (never fetched over HTTP)
-    body_bytes = storage.read_bytes(user.body_photo_url)
+    # Prefer the AI avatar (clean studio twin); fall back to the original photo.
+    try:
+        body_bytes = storage.read_bytes(user.avatar_url) if user.avatar_url else storage.read_bytes(user.body_photo_url)
+    except FileNotFoundError:
+        body_bytes = storage.read_bytes(user.body_photo_url)
 
     # Sort: bottom → shoes → dress → top → outerwear
     sorted_items = sorted(

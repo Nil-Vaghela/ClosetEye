@@ -306,7 +306,7 @@ class _StepOnboarding extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         const Text(
-          'We create a personal silhouette just for you — used to preview every outfit on YOUR body, not a generic mannequin.',
+          'We create your personal model from one photo. Every outfit you try is shown on you, not a generic mannequin.',
           style: TextStyle(
             color: AppColors.textSecondary,
             fontSize: 15,
@@ -316,11 +316,11 @@ class _StepOnboarding extends StatelessWidget {
         const SizedBox(height: 32),
 
         // Feature list
-        _Feature('📏', 'Your measurements', 'Height, weight, body type — takes 10 seconds'),
+        _Feature('📏', 'Your measurements', 'Height, weight and body type. Takes 10 seconds'),
         const SizedBox(height: 12),
         _Feature('📸', 'One reference photo', 'Stand straight, full body. We do the rest.'),
         const SizedBox(height: 12),
-        _Feature('🤖', 'AI removes the background', 'Creates your clean silhouette instantly'),
+        _Feature('🤖', 'AI builds your model', 'A clean studio version of you, ready for try ons'),
         const SizedBox(height: 40),
 
         GradientButton(
@@ -498,7 +498,7 @@ class _StepMeasurements extends StatelessWidget {
         const SizedBox(height: 40),
 
         GradientButton(
-          label: 'Next — Take photo',
+          label: 'Next: take photo',
           icon: Icons.camera_alt_outlined,
           onPressed: onNext,
         ),
@@ -830,7 +830,7 @@ class _StepPreview extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           const Text(
-            'AI is removing the background\nand creating your silhouette',
+            'Creating your personal model.\nThis takes about 20 seconds.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.textMuted,

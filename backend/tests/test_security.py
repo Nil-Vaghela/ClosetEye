@@ -286,3 +286,26 @@ async def test_gemini_adapter_maps_openai_calls(monkeypatch):
     img = base64.b64decode(out.data[0].b64_json)
     assert img[:8] == b"\x89PNG\r\n\x1a\n"  # always PNG back
     assert seen["calls"][1][0] == settings.VERTEX_IMAGE_MODEL and len(seen["calls"][1][1][0].parts) == 3
+
+
+@pytest.mark.parametrize("avatar_ok", [True, False])
+async def test_body_model_creates_avatar_or_falls_back(client, db, monkeypatch, avatar_ok):
+    from app.api.routes import users as users_route
+    png = io.BytesIO(); Image.new("RGB", (8, 8), "grey").save(png, format="PNG")
+
+    async def fake_avatar(*a, **k):
+        return png.getvalue() if avatar_ok else None
+    monkeypatch.setattr(users_route, "generate_avatar", fake_avatar)
+    monkeypatch.setattr(users_route, "generate_silhouette", lambda b: png.getvalue())
+    u = await make_user(db)
+    r = await client.post("/api/v1/users/me/body-model", headers=auth(u),
+                          files={"photo": ("me.jpg", _jpeg_with_gps(), "image/jpeg")},
+                          data={"height_cm": "170", "weight_kg": "65", "body_type": "regular"})
+    assert r.status_code == 201, r.text
+    await db.refresh(u)
+    if avatar_ok:
+        assert u.avatar_url and u.avatar_url.endswith("avatar.png")
+        assert u.body_silhouette_url == u.avatar_url
+    else:
+        assert u.avatar_url is None and u.body_silhouette_url.endswith("silhouette.png")
+    assert "sig=" in r.json()["body_silhouette_url"]

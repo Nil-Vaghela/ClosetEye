@@ -23,7 +23,8 @@ class User(Base):
 
     # Body model — created in Sprint 2, used for virtual try-on
     body_photo_url: Mapped[str | None] = mapped_column(String(512), nullable=True)   # original reference photo
-    body_silhouette_url: Mapped[str | None] = mapped_column(String(512), nullable=True)  # processed cutout
+    body_silhouette_url: Mapped[str | None] = mapped_column(String(512), nullable=True)  # what the app shows as "your model"
+    avatar_url: Mapped[str | None] = mapped_column(String(512), nullable=True)  # AI digital twin used for try-on
     height_cm: Mapped[int | None] = mapped_column(nullable=True)
     weight_kg: Mapped[int | None] = mapped_column(nullable=True)
     body_type: Mapped[str | None] = mapped_column(String(32), nullable=True)  # slim / regular / athletic / curvy / plus
