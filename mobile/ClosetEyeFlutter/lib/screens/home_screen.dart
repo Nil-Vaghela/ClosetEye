@@ -18,6 +18,8 @@ import 'shopping_screen.dart';
 import 'ootd_screen.dart';
 import 'capture_screen.dart';
 import 'mix_match_screen.dart';
+import 'daily_outfit_screen.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -150,6 +152,7 @@ class _HomeTabState extends State<_HomeTab> {
   int _itemCount = 0;
   int _outfitCount = 0;
   int _streak = 0;
+  int _unreadNotifications = 0;
   List<Map<String, dynamic>> _recentItems = [];
   Map<String, dynamic>? _todayLook;
   bool _loadingLook = true;
@@ -194,6 +197,10 @@ class _HomeTabState extends State<_HomeTab> {
         _todayLook   = pick;
         _loadingLook = false;
       });
+      // Load notification badge count in background
+      ApiClient.getUnreadNotificationCount().then((c) {
+        if (mounted) setState(() => _unreadNotifications = c);
+      }).catchError((_) {});
     } catch (_) {
       if (mounted) setState(() => _loadingLook = false);
     }
@@ -240,6 +247,47 @@ class _HomeTabState extends State<_HomeTab> {
                         color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
                   ),
                   const SizedBox(width: 10),
+                  // Notification bell with unread badge
+                  GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))
+                        .then((_) => ApiClient.getUnreadNotificationCount().then((c) {
+                          if (mounted) setState(() => _unreadNotifications = c);
+                        }).catchError((_) {}));
+                    },
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 42, height: 42,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: const Icon(Icons.notifications_outlined,
+                              color: AppColors.textSecondary, size: 20),
+                        ),
+                        if (_unreadNotifications > 0)
+                          Positioned(
+                            top: -3, right: -3,
+                            child: Container(
+                              width: 16, height: 16,
+                              decoration: const BoxDecoration(
+                                  color: AppColors.error, shape: BoxShape.circle),
+                              child: Center(
+                                child: Text('$_unreadNotifications',
+                                    style: const TextStyle(
+                                        color: Colors.white, fontSize: 9,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () { HapticFeedback.lightImpact();
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const CaptureScreen())); },
@@ -279,6 +327,101 @@ class _HomeTabState extends State<_HomeTab> {
         ),
 
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+        // ── Daily Outfits banner ──────────────────────────────────────────
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                Navigator.push(context,
+                    PageRouteBuilder(
+                      pageBuilder: (_, a, __) => const DailyOutfitScreen(),
+                      transitionsBuilder: (_, a, __, child) => SlideTransition(
+                        position: Tween(begin: const Offset(0, 1), end: Offset.zero)
+                            .animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+                        child: child,
+                      ),
+                      transitionDuration: const Duration(milliseconds: 350),
+                    ));
+              },
+              child: Container(
+                height: 76,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1A1A2E), Color(0xFF16213E)],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1A1A2E).withOpacity(0.4),
+                      blurRadius: 18, offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: 14, top: 8,
+                      child: Opacity(
+                        opacity: 0.15,
+                        child: const Text('✨👗🌤', style: TextStyle(fontSize: 26, height: 1.4)),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 46, height: 46,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.10),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: const Icon(Icons.auto_awesome_rounded,
+                                color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Text('Today\'s Outfit Picks',
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 15,
+                                        fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+                                const SizedBox(height: 2),
+                                Text('3 looks curated for you',
+                                    style: TextStyle(
+                                        color: Colors.white.withOpacity(0.6),
+                                        fontSize: 11)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.arrow_forward_ios_rounded,
+                                color: Colors.white, size: 14),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        const SliverToBoxAdapter(child: SizedBox(height: 10)),
 
         // ── Mix & Match banner ────────────────────────────────────────────
         SliverToBoxAdapter(

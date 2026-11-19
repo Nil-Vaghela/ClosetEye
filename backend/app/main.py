@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.routes import auth, wardrobe, outfits, suggestions, tryon, users, shopping, ootd
+from app.api.routes import auth, wardrobe, outfits, suggestions, tryon, users, shopping, ootd, outfit_engine
 from app.core.config import settings
 from app.core.database import engine, Base
 
@@ -52,4 +52,5 @@ app.include_router(outfits.router,     prefix="/api/v1/outfits",     tags=["Outf
 app.include_router(suggestions.router, prefix="/api/v1/suggestions", tags=["Suggestions"])
 app.include_router(tryon.router,       prefix="/api/v1/tryon",       tags=["Virtual Try-On"])
 app.include_router(shopping.router,    prefix="/api/v1/shopping",    tags=["Shopping"])
-app.include_router(ootd.router,        prefix="/api/v1/ootd",        tags=["OOTD"])
+app.include_router(ootd.router,          prefix="/api/v1/ootd",          tags=["OOTD"])
+app.include_router(outfit_engine.router, prefix="/api/v1/outfit",        tags=["Outfit Engine"])

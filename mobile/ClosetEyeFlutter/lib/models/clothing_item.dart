@@ -64,6 +64,17 @@ class ClothingItem {
     );
   }
 
+  /// Placeholder item used when a wardrobe item ID can't be found locally.
+  factory ClothingItem.empty({required String id, required String category}) => ClothingItem(
+        id: id,
+        category: category,
+        season: 'all',
+        tags: const [],
+        originalImageUrl: '',
+        totalWears: 0,
+        createdAt: DateTime(2024),
+      );
+
   static const categories = ['top', 'bottom', 'dress', 'outerwear', 'shoes', 'accessory', 'other'];
 
   static const categoryLabels = {

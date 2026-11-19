@@ -27,6 +27,10 @@ class _TryOnScreenState extends State<TryOnScreen>
   AppUser? _user;
   String _catFilter = 'All';
 
+  // Feedback state for after result
+  String? _feedbackGiven; // "like" | "dislike" | null
+  bool _wornLogged = false;
+
   late AnimationController _pulse;
 
   static const _cats = ['All', 'top', 'bottom', 'outerwear', 'shoes', 'dress'];
@@ -107,6 +111,8 @@ class _TryOnScreenState extends State<TryOnScreen>
       setState(() {
         _previewUrl = rawUrl != null ? fixUrl(rawUrl) : null;
         _generating = false;
+        _feedbackGiven = null;
+        _wornLogged = false;
       });
       HapticFeedback.heavyImpact();
     } catch (e) {
@@ -133,6 +139,27 @@ class _TryOnScreenState extends State<TryOnScreen>
       }
     } catch (e) {
       _showError(e.toString());
+    }
+  }
+
+  Future<void> _submitTryOnFeedback(String feedback) async {
+    setState(() => _feedbackGiven = feedback);
+    try {
+      await ApiClient.submitOutfitFeedback(
+        itemIds: _selectedIds.toList(),
+        feedback: feedback,
+      );
+    } catch (_) {}
+    if (feedback == 'like' || mounted) return;
+  }
+
+  Future<void> _logWornFromTryOn() async {
+    if (_selectedIds.isEmpty) return;
+    setState(() => _wornLogged = true);
+    try {
+      await ApiClient.logOutfitWorn(itemIds: _selectedIds.toList());
+    } catch (_) {
+      if (mounted) setState(() => _wornLogged = false);
     }
   }
 
@@ -417,6 +444,74 @@ class _TryOnScreenState extends State<TryOnScreen>
                   ),
                 ),
               ]),
+
+              // ── Feedback + "I wore this" row ──────────────────────────
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.glassBorder),
+                ),
+                child: Row(
+                  children: [
+                    // 👍
+                    _TryOnFeedbackBtn(
+                      icon: Icons.thumb_up_rounded,
+                      label: 'Love it',
+                      active: _feedbackGiven == 'like',
+                      activeColor: AppColors.success,
+                      onTap: _feedbackGiven == null
+                          ? () => _submitTryOnFeedback('like')
+                          : null,
+                    ),
+                    const SizedBox(width: 8),
+                    // 👎
+                    _TryOnFeedbackBtn(
+                      icon: Icons.thumb_down_rounded,
+                      label: 'Not great',
+                      active: _feedbackGiven == 'dislike',
+                      activeColor: AppColors.error,
+                      onTap: _feedbackGiven == null
+                          ? () => _submitTryOnFeedback('dislike')
+                          : null,
+                    ),
+                    const Spacer(),
+                    // I wore this
+                    GestureDetector(
+                      onTap: _wornLogged ? null : _logWornFromTryOn,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: _wornLogged ? null : AppColors.accent,
+                          color: _wornLogged ? AppColors.success.withOpacity(0.15) : null,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _wornLogged ? Icons.check_circle_rounded : Icons.checkroom_rounded,
+                              size: 13,
+                              color: _wornLogged ? AppColors.success : Colors.white,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              _wornLogged ? 'Logged!' : 'I wore this',
+                              style: TextStyle(
+                                  color: _wornLogged ? AppColors.success : Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ],
         ),
@@ -954,4 +1049,55 @@ class _EmptyWardrobe extends StatelessWidget {
               textAlign: TextAlign.center),
         ]),
       );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Try-On Feedback Button
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _TryOnFeedbackBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final Color activeColor;
+  final VoidCallback? onTap;
+
+  const _TryOnFeedbackBtn({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.activeColor,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? activeColor.withOpacity(0.12) : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active ? activeColor.withOpacity(0.4) : AppColors.glassBorder,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon,
+                size: 14, color: active ? activeColor : AppColors.textMuted),
+            const SizedBox(width: 5),
+            Text(label,
+                style: TextStyle(
+                    color: active ? activeColor : AppColors.textSecondary,
+                    fontSize: 12,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400)),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -27,6 +27,10 @@ class _MixMatchScreenState extends State<MixMatchScreen> {
   ClothingItem? _bottom;
   ClothingItem? _shoes;
 
+  // Confidence score for current combo
+  Map<String, dynamic>? _scoreData;
+  bool _scoringInProgress = false;
+
   @override
   void initState() {
     super.initState();
@@ -73,6 +77,7 @@ class _MixMatchScreenState extends State<MixMatchScreen> {
         case 'shoes':     _shoes     = item; break;
       }
     });
+    _refreshScore();
   }
 
   void _clear(String slot) {
@@ -85,11 +90,29 @@ class _MixMatchScreenState extends State<MixMatchScreen> {
         case 'shoes':     _shoes     = null; break;
       }
     });
+    _refreshScore();
   }
 
   List<String> get _slottedIds => [
         _top?.id, _outerwear?.id, _bottom?.id, _shoes?.id,
       ].whereType<String>().toList();
+
+  /// Called whenever items change — debounces and calls /outfit/score
+  Future<void> _refreshScore() async {
+    final ids = _slottedIds;
+    if (ids.length < 2) {
+      setState(() { _scoreData = null; });
+      return;
+    }
+    if (_scoringInProgress) return;
+    setState(() => _scoringInProgress = true);
+    try {
+      final result = await ApiClient.scoreOutfit(itemIds: ids);
+      if (mounted) setState(() { _scoreData = result; _scoringInProgress = false; });
+    } catch (_) {
+      if (mounted) setState(() => _scoringInProgress = false);
+    }
+  }
 
   // ── Build ──────────────────────────────────────────────────────────────────
 
@@ -257,7 +280,15 @@ class _MixMatchScreenState extends State<MixMatchScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _outfitBoard(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          // ── Live Confidence Score ─────────────────────────────────
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _scoreData != null
+                ? _MixMatchScoreBar(scoreData: _scoreData!)
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(height: 8),
           _slot('outerwear', '🧥', 'Jacket',      _outerwear),
           _slot('top',       '👕', 'Top / Dress',  _top),
           _slot('bottom',    '👖', 'Bottom',       _bottom),
@@ -750,6 +781,88 @@ class _FilledSlot extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mix & Match Confidence Score Bar
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MixMatchScoreBar extends StatelessWidget {
+  final Map<String, dynamic> scoreData;
+  const _MixMatchScoreBar({required this.scoreData});
+
+  @override
+  Widget build(BuildContext context) {
+    final score = (scoreData['confidence_score'] as num?)?.toInt() ?? 0;
+    final bd = scoreData['breakdown'] as Map<String, dynamic>? ?? {};
+
+    final color = score >= 75
+        ? AppColors.success
+        : score >= 55
+            ? AppColors.goldMid
+            : AppColors.error;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 14, color: color),
+              const SizedBox(width: 6),
+              Text('Outfit Score',
+                  style: TextStyle(
+                      color: color, fontSize: 12,
+                      fontWeight: FontWeight.w700, letterSpacing: 0.3)),
+              const Spacer(),
+              Text('$score / 100',
+                  style: TextStyle(
+                      color: color, fontSize: 13, fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _miniBar('🎨 Color',   (bd['color']   as num?)?.toInt() ?? 0),
+              const SizedBox(width: 6),
+              _miniBar('🌤 Weather', (bd['weather'] as num?)?.toInt() ?? 0),
+              const SizedBox(width: 6),
+              _miniBar('✨ Style',   (bd['style']   as num?)?.toInt() ?? 0),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniBar(String label, int value) {
+    final ratio = value / 25.0;
+    final color = ratio >= 0.72 ? AppColors.success : AppColors.goldMid;
+    return Expanded(
+      child: Column(
+        children: [
+          Text(label,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+              overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 5,
+              backgroundColor: AppColors.glassBorder,
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+        ],
       ),
     );
   }

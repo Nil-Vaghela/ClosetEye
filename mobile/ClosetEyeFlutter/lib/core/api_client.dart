@@ -406,6 +406,125 @@ static Future<List<dynamic>> getShoppingItems() async {
     return _parse(res);
   }
 
+  // ── Outfit Engine ─────────────────────────────────────────────────────────
+
+  /// GET /outfit/daily — get (or generate) today's outfit suggestions.
+  /// [lat] and [lon] enable live weather. [occasion] filters by mode.
+  static Future<Map<String, dynamic>> getDailyOutfits({
+    String? occasion,
+    double? lat,
+    double? lon,
+    bool forceRefresh = false,
+  }) async {
+    final params = <String, String>{
+      if (occasion != null) 'occasion': occasion,
+      if (lat != null) 'lat': lat.toString(),
+      if (lon != null) 'lon': lon.toString(),
+      if (forceRefresh) 'force_refresh': 'true',
+    };
+    final uri = Uri.parse('$_baseUrl/outfit/daily').replace(queryParameters: params);
+    final res = await http.get(uri, headers: await _headers());
+    final parsed = _parse(res);
+    return parsed is Map<String, dynamic> ? parsed : {};
+  }
+
+  /// POST /outfit/score — compute a real confidence score for any item combo.
+  static Future<Map<String, dynamic>> scoreOutfit({
+    required List<String> itemIds,
+    String? occasion,
+    double? weatherTempC,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$_baseUrl/outfit/score'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'item_ids': itemIds,
+        if (occasion != null) 'occasion': occasion,
+        if (weatherTempC != null) 'weather_temp_c': weatherTempC,
+      }),
+    );
+    return _parse(res) as Map<String, dynamic>;
+  }
+
+  /// POST /outfit/feedback — submit 👍/👎 on an outfit.
+  static Future<Map<String, dynamic>> submitOutfitFeedback({
+    required List<String> itemIds,
+    required String feedback, // "like" | "dislike"
+    String? reason,
+    String? dailyOutfitId,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$_baseUrl/outfit/feedback'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'item_ids': itemIds,
+        'feedback': feedback,
+        if (reason != null) 'reason': reason,
+        if (dailyOutfitId != null) 'daily_outfit_id': dailyOutfitId,
+      }),
+    );
+    return _parse(res) as Map<String, dynamic>;
+  }
+
+  /// POST /outfit/wear — log that user actually wore this outfit.
+  static Future<Map<String, dynamic>> logOutfitWorn({
+    required List<String> itemIds,
+    String? wornDate,
+    String? occasion,
+    String? outfitId,
+    String? note,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$_baseUrl/outfit/wear'),
+      headers: await _headers(),
+      body: jsonEncode({
+        'item_ids': itemIds,
+        if (wornDate != null) 'worn_date': wornDate,
+        if (occasion != null) 'occasion': occasion,
+        if (outfitId != null) 'outfit_id': outfitId,
+        if (note != null) 'note': note,
+      }),
+    );
+    return _parse(res) as Map<String, dynamic>;
+  }
+
+  /// GET /outfit/history — recent outfit wear history.
+  static Future<List<dynamic>> getOutfitHistory({int limit = 30}) async {
+    final uri = Uri.parse('$_baseUrl/outfit/history')
+        .replace(queryParameters: {'limit': limit.toString()});
+    final res = await http.get(uri, headers: await _headers());
+    return _parse(res) as List<dynamic>;
+  }
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+
+  /// GET /outfit/notifications — in-app notifications.
+  static Future<List<dynamic>> getNotifications({bool unreadOnly = false}) async {
+    final uri = Uri.parse('$_baseUrl/outfit/notifications').replace(
+      queryParameters: {if (unreadOnly) 'unread_only': 'true'},
+    );
+    final res = await http.get(uri, headers: await _headers());
+    return _parse(res) as List<dynamic>;
+  }
+
+  /// GET /outfit/notifications/count — unread count for badge.
+  static Future<int> getUnreadNotificationCount() async {
+    final res = await http.get(
+      Uri.parse('$_baseUrl/outfit/notifications/count'),
+      headers: await _headers(),
+    );
+    final data = _parse(res) as Map<String, dynamic>;
+    return (data['unread_count'] as num?)?.toInt() ?? 0;
+  }
+
+  /// POST /outfit/notifications/{id}/read — mark notification read.
+  static Future<void> markNotificationRead(String notificationId) async {
+    await http.post(
+      Uri.parse('$_baseUrl/outfit/notifications/$notificationId/read'),
+      headers: await _headers(),
+    );
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   static dynamic _parse(http.Response res) {

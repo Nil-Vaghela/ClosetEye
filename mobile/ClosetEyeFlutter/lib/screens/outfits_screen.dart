@@ -465,6 +465,8 @@ class _OutfitCardState extends State<_OutfitCard> {
   bool _expanded = false;
   bool _generatingFlatlay = false;
   String? _flatlayUrl;
+  String? _feedbackGiven; // "like" | "dislike"
+  bool _wornLogged = false;
 
   @override
   Widget build(BuildContext context) {
@@ -704,6 +706,73 @@ class _OutfitCardState extends State<_OutfitCard> {
                 const SizedBox(height: 8),
                 // ── Flatlay button (full-width, secondary) ───────────
                 _buildFlatLayButton(items),
+                const SizedBox(height: 8),
+                // ── Feedback + "I wore this" ─────────────────────────
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.glassBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      // 👍
+                      _feedbackChip(
+                        icon: Icons.thumb_up_rounded,
+                        label: 'Like',
+                        active: _feedbackGiven == 'like',
+                        color: AppColors.success,
+                        onTap: _feedbackGiven == null
+                            ? () => _submitFeedback(items, 'like')
+                            : null,
+                      ),
+                      const SizedBox(width: 6),
+                      // 👎
+                      _feedbackChip(
+                        icon: Icons.thumb_down_rounded,
+                        label: 'Nope',
+                        active: _feedbackGiven == 'dislike',
+                        color: AppColors.error,
+                        onTap: _feedbackGiven == null
+                            ? () => _submitFeedback(items, 'dislike')
+                            : null,
+                      ),
+                      const Spacer(),
+                      // I wore this
+                      GestureDetector(
+                        onTap: _wornLogged ? null : () => _logWorn(items),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            gradient: _wornLogged ? null : AppColors.accent,
+                            color: _wornLogged ? AppColors.success.withOpacity(0.15) : null,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _wornLogged ? Icons.check_circle_rounded : Icons.checkroom_rounded,
+                                size: 13,
+                                color: _wornLogged ? AppColors.success : Colors.white,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                _wornLogged ? 'Logged!' : 'I wore this',
+                                style: TextStyle(
+                                    color: _wornLogged ? AppColors.success : Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -783,6 +852,57 @@ class _OutfitCardState extends State<_OutfitCard> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Future<void> _submitFeedback(List<Map<String, dynamic>> items, String fb) async {
+    setState(() => _feedbackGiven = fb);
+    final ids = items.map((e) => e['id'] as String? ?? '').where((id) => id.isNotEmpty).toList();
+    try {
+      await ApiClient.submitOutfitFeedback(itemIds: ids, feedback: fb);
+    } catch (_) {}
+  }
+
+  Future<void> _logWorn(List<Map<String, dynamic>> items) async {
+    setState(() => _wornLogged = true);
+    final ids = items.map((e) => e['id'] as String? ?? '').where((id) => id.isNotEmpty).toList();
+    try {
+      await ApiClient.logOutfitWorn(itemIds: ids);
+    } catch (_) {
+      if (mounted) setState(() => _wornLogged = false);
+    }
+  }
+
+  Widget _feedbackChip({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required Color color,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? color.withOpacity(0.12) : AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: active ? color.withOpacity(0.4) : AppColors.glassBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 13, color: active ? color : AppColors.textMuted),
+            const SizedBox(width: 4),
+            Text(label,
+                style: TextStyle(
+                    color: active ? color : AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400)),
+          ],
+        ),
       ),
     );
   }
