@@ -23,6 +23,7 @@ from sqlalchemy import and_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.clothing import ClothingItem
+from app.services.storage import sign_url
 from app.models.outfit_engine import NotificationLog, OutfitHistory
 
 logger = logging.getLogger(__name__)
@@ -321,7 +322,9 @@ def _serialize(n: NotificationLog) -> dict:
         "type": n.notification_type,
         "title": n.title,
         "message": n.message,
-        "payload": n.payload,
+        "payload": {**(n.payload or {}), **(
+            {"image_url": sign_url((n.payload or {}).get("image_url"))} if (n.payload or {}).get("image_url") else {}
+        )},
         "is_read": n.is_read,
         "sent_at": n.sent_at.isoformat() if n.sent_at else None,
         "read_at": n.read_at.isoformat() if n.read_at else None,

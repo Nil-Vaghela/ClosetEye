@@ -22,6 +22,9 @@ from app.schemas.shopping import ShoppingItemResponse
 from app.services.file_service import file_service
 from app.services.garment_service import extract_garment, dewrinkle_and_clean, detect_photo_type_heuristic
 from app.services.ai_service import ai_service
+from app.services import quota
+from app.services.image_upload import read_clean_image
+from fastapi.concurrency import run_in_threadpool
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -45,21 +48,8 @@ async def upload_shopping_item(
     - category: optional override for detected category
     - name: optional item name
     """
-    # ── 1. Validate file type and size ──────────────────────────────────────────
-    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-    if image.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported image type. Use JPEG, PNG, WEBP, or HEIC.",
-        )
-
-    image_bytes = await image.read()
-    max_bytes = settings.MAX_FILE_SIZE_MB * 1024 * 1024
-    if len(image_bytes) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image must be under {settings.MAX_FILE_SIZE_MB} MB.",
-        )
+    image_bytes = await read_clean_image(image)
+    await quota.consume(db, current_user.id, "item_upload")
 
     try:
         # ── 2. Save original image ─────────────────────────────────────────────
@@ -72,12 +62,10 @@ async def upload_shopping_item(
 
         # ── 3. Extract garment ─────────────────────────────────────────────────
         logger.info("Extracting garment")
-        photo_type = detect_photo_type_heuristic(image_bytes)
-        garment_bytes = extract_garment(image_bytes, photo_type)
+        def _process() -> bytes:
+            return dewrinkle_and_clean(extract_garment(image_bytes, detect_photo_type_heuristic(image_bytes)))
 
-        # ── 4. Dewrinkle and clean ────────────────────────────────────────────
-        logger.info("Cleaning image")
-        cleaned_bytes = dewrinkle_and_clean(garment_bytes)
+        cleaned_bytes = await run_in_threadpool(_process)
 
         # ── 5. Save cleaned image ──────────────────────────────────────────────
         logger.info("Saving cleaned image")
@@ -127,10 +115,10 @@ async def upload_shopping_item(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Shopping item upload failed: {exc}")
+        logger.exception("Shopping item upload failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload processing failed: {str(exc)}",
+            detail="We couldn't process that photo. Please try another one.",
         ) from exc
 
 

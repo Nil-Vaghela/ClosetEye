@@ -188,3 +188,12 @@ async def test_cache_invalidated_when_item_deleted(client, db):
     assert second["cached"] is False
     assert all(o["items"]["top"] != used_top for o in second["outfits"])
     assert t  # silence unused
+
+
+def test_hex_colors_are_understood():
+    assert oe.color_to_name("#1F2A44") == "navy"
+    assert oe.color_to_name("#FFFFFF") == "white"
+    assert oe.color_to_name("Navy") == "navy"
+    assert oe.color_to_name("#zz") is None
+    hexy = [fake_item("top", "#F5F5F5"), fake_item("bottom", "#1E2850")]
+    assert oe._score_color(hexy) > 15  # navy + white is a harmonious pair

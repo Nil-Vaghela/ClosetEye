@@ -1,3 +1,5 @@
+from pydantic import field_serializer
+from app.services.storage import sign_url
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
@@ -32,6 +34,10 @@ class ClothingItemResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("original_image_url", "cleaned_image_url")
+    def _sign(self, v):
+        return sign_url(v)
 
 
 class ClothingItemUpdate(BaseModel):

@@ -21,6 +21,13 @@ from app.models.user import User
 from app.schemas.user import BodyModelRequest, BodyModelResponse, UserResponse
 from app.services.body_model_service import generate_silhouette, save_upload
 from app.core.config import settings
+from app.services.image_upload import clean_image_bytes
+from app.services.storage import stable_url
+from app.services.account_service import delete_account
+from fastapi.concurrency import run_in_threadpool
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -67,27 +74,8 @@ async def create_body_model(
             detail="Photo must be under 20 MB.",
         )
 
-    # Detect real MIME from magic bytes — Flutter/mobile often sends
-    # application/octet-stream regardless of actual image format.
-    def _sniff_mime(data: bytes) -> str:
-        if data[:3] == b"\xff\xd8\xff":
-            return "image/jpeg"
-        if data[:8] == b"\x89PNG\r\n\x1a\n":
-            return "image/png"
-        if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-            return "image/webp"
-        # HEIC/HEIF ftyp box at offset 4
-        if len(data) > 12 and data[4:8] == b"ftyp":
-            return "image/heic"
-        return photo.content_type or "unknown"
-
-    detected_mime = _sniff_mime(image_bytes)
-    allowed = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-    if detected_mime not in allowed:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported image type '{detected_mime}'. Use JPEG, PNG, or WEBP.",
-        )
+    image_bytes = clean_image_bytes(image_bytes)  # real type check + strips GPS/EXIF
+    detected_mime = "image/jpeg"
 
     # ── 2. Validate body_type ─────────────────────────────────────────────────
     valid_body_types = {"slim", "regular", "athletic", "curvy", "plus"}
@@ -106,11 +94,12 @@ async def create_body_model(
 
     # ── 5. Generate silhouette (background removal) ───────────────────────────
     try:
-        silhouette_bytes = generate_silhouette(image_bytes)
-    except RuntimeError as exc:
+        silhouette_bytes = await run_in_threadpool(generate_silhouette, image_bytes)
+    except RuntimeError:
+        logger.exception("Silhouette generation failed")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="We couldn't find you in that photo. Try a well-lit, full-body photo facing the camera.",
         )
 
     # ── 6. Save silhouette ────────────────────────────────────────────────────
@@ -118,10 +107,9 @@ async def create_body_model(
     save_upload(silhouette_bytes, silhouette_path)
 
     # ── 7. Build public URLs ──────────────────────────────────────────────────
-    # For now, serve via FastAPI's StaticFiles mount (set up in main.py)
-    base = settings.BASE_URL.rstrip("/")
-    body_photo_url = f"{base}/uploads/body_models/{current_user.id}/{original_filename}"
-    body_silhouette_url = f"{base}/uploads/body_models/{current_user.id}/silhouette.png"
+    # Private: only reachable through signed URLs (see services/storage.py)
+    body_photo_url = stable_url(f"body_models/{current_user.id}/{original_filename}")
+    body_silhouette_url = stable_url(f"body_models/{current_user.id}/silhouette.png")
 
     # ── 8. Persist to DB ──────────────────────────────────────────────────────
     current_user.body_photo_url = body_photo_url
@@ -148,3 +136,29 @@ async def get_body_model(current_user: User = Depends(get_current_user)):
             detail="Body model not yet created. POST to /users/me/body-model first.",
         )
     return BodyModelResponse.model_validate(current_user)
+
+
+# ── DELETE /users/me ──────────────────────────────────────────────────────────
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Permanently delete the account: every DB row, every stored photo, and the Firebase login."""
+    await delete_account(db, current_user)
+
+
+@router.delete("/me/body-model", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_body_model(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete the body photo + silhouette any time."""
+    from app.services import storage
+    for url in (current_user.body_photo_url, current_user.body_silhouette_url):
+        storage.delete(url)
+    current_user.body_photo_url = None
+    current_user.body_silhouette_url = None
+    current_user.body_model_ready = False
+    await db.commit()

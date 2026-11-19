@@ -25,7 +25,7 @@ import io
 import logging
 from typing import List, Tuple
 
-import httpx
+from app.services import storage
 from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -133,6 +133,7 @@ def _garment_png(garment_bytes: bytes, max_dim: int = 768) -> bytes:
 # ─── Main entry point ─────────────────────────────────────────────────────────
 
 async def generate_flatlay(
+    user_id,
     item_ids: list[str],
     db: AsyncSession,
 ) -> bytes:
@@ -153,7 +154,9 @@ async def generate_flatlay(
     # ── Fetch clothing items ──────────────────────────────────────────────────
     item_uuids = [_uuid.UUID(str(i)) for i in item_ids]
     result = await db.execute(
-        select(ClothingItem).where(ClothingItem.id.in_(item_uuids))
+        select(ClothingItem).where(
+            ClothingItem.id.in_(item_uuids), ClothingItem.owner_id == _uuid.UUID(str(user_id))
+        )
     )
     items: list[ClothingItem] = list(result.scalars().all())
     if not items:
@@ -161,19 +164,12 @@ async def generate_flatlay(
 
     # ── Download garment images ───────────────────────────────────────────────
     garment_data: list[tuple[ClothingItem, bytes]] = []
-    async with httpx.AsyncClient(timeout=30.0) as hc:
-        for item in items:
-            url = item.cleaned_image_url or item.original_image_url
-            if not url:
-                logger.warning(f"Item '{item.name}' has no image URL — skipping")
-                continue
-            try:
-                r = await hc.get(url)
-                r.raise_for_status()
-                garment_data.append((item, r.content))
-                logger.info(f"Flatlay garment '{item.name}': {len(r.content)} B")
-            except Exception as exc:
-                logger.warning(f"Failed to download garment {item.id}: {exc}")
+    for item in items:
+        try:
+            data = storage.read_bytes(item.cleaned_image_url or item.original_image_url)
+            garment_data.append((item, data))
+        except FileNotFoundError:
+            logger.warning(f"Garment image missing for item {item.id}")
 
     if not garment_data:
         raise RuntimeError("Could not download any garment images.")

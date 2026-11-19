@@ -64,39 +64,15 @@ class FileService:
             raise IOError(f"Failed to save file: {exc}") from exc
 
         # Build public URL
-        relative_path = f"{subdir}/{filename}"
-        public_url = f"{self.base_url}/uploads/{relative_path}"
+        from app.services.storage import stable_url
+        public_url = stable_url(f"{subdir}/{filename}")
 
         return str(file_path), public_url
 
     async def delete(self, public_url: str) -> None:
-        """
-        Delete a file by its public URL.
-
-        Args:
-            public_url: The full public URL (e.g. http://localhost:8000/uploads/...)
-
-        Raises:
-            IOError: If file cannot be deleted
-        """
-        # Extract relative path from URL
-        # URL format: {base_url}/uploads/{relative_path}
-        if not public_url.startswith(self.base_url):
-            logger.warning(f"URL does not match base URL: {public_url}")
-            return
-
-        relative = public_url[len(self.base_url) + len("/uploads/") :]
-        file_path = self.upload_dir / relative
-
-        try:
-            if file_path.exists():
-                file_path.unlink()
-                logger.info(f"Deleted file: {file_path}")
-            else:
-                logger.warning(f"File not found for deletion: {file_path}")
-        except Exception as exc:
-            logger.error(f"Failed to delete file {file_path}: {exc}")
-            raise IOError(f"Failed to delete file: {exc}") from exc
+        """Delete a stored file by its URL (any host; only paths inside UPLOAD_DIR)."""
+        from app.services import storage
+        storage.delete(public_url)
 
 
 file_service = FileService()

@@ -4,6 +4,7 @@ from app.models.outfit import Outfit, OutfitItem
 from app.models.shopping import ShoppingItem
 from app.models.ootd import OOTDLog
 from app.models.ai_suggestion import AISuggestion
+from app.models.ai_usage import AIUsage, AICache
 from app.models.outfit_engine import (
     DailyOutfit,
     OutfitHistory,
@@ -14,7 +15,7 @@ from app.models.outfit_engine import (
 
 __all__ = [
     "User", "ClothingItem", "Outfit", "OutfitItem", "ShoppingItem",
-    "OOTDLog", "AISuggestion",
+    "OOTDLog", "AISuggestion", "AIUsage", "AICache",
     "DailyOutfit", "OutfitHistory", "OutfitFeedback",
     "UserStylePreferences", "NotificationLog",
 ]

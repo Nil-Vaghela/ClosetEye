@@ -23,7 +23,7 @@ from functools import partial
 
 import cv2
 import numpy as np
-import httpx
+from app.services import storage
 from PIL import Image, ImageFilter
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -714,18 +714,16 @@ async def generate_try_on_preview(
     # Fetch clothing items
     item_uuids = [_uuid.UUID(str(i)) for i in item_ids]
     result = await db.execute(
-        select(ClothingItem).where(ClothingItem.id.in_(item_uuids))
+        select(ClothingItem).where(
+            ClothingItem.id.in_(item_uuids), ClothingItem.owner_id == user.id
+        )
     )
     clothing_items = result.scalars().all()
     if not clothing_items:
         raise RuntimeError("No clothing items found")
 
-    # Download body photo
-    async with httpx.AsyncClient(timeout=30.0) as hc:
-        resp = await hc.get(user.body_photo_url)
-        resp.raise_for_status()
-        body_bytes = resp.content
-        logger.info(f"Body photo: {len(body_bytes)} bytes")
+    # Read body photo from private storage (never fetched over HTTP)
+    body_bytes = storage.read_bytes(user.body_photo_url)
 
     # Sort: bottom → shoes → dress → top → outerwear
     sorted_items = sorted(
@@ -737,18 +735,11 @@ async def generate_try_on_preview(
 
     # Download garment images
     garment_data: list[tuple[ClothingItem, bytes]] = []
-    async with httpx.AsyncClient(timeout=30.0) as hc:
-        for item in sorted_items:
-            url = item.cleaned_image_url or item.original_image_url
-            if not url:
-                continue
-            try:
-                r = await hc.get(url)
-                r.raise_for_status()
-                garment_data.append((item, r.content))
-                logger.info(f"Garment '{item.name}': {len(r.content)} bytes")
-            except Exception as exc:
-                logger.warning(f"Failed to download garment {item.id}: {exc}")
+    for item in sorted_items:
+        try:
+            garment_data.append((item, storage.read_bytes(item.cleaned_image_url or item.original_image_url)))
+        except FileNotFoundError:
+            logger.warning(f"Garment image missing for item {item.id}")
 
     if not garment_data:
         raise RuntimeError("Could not download any garment images")
@@ -778,7 +769,8 @@ async def generate_try_on_preview(
         result_bytes = None
 
         # 1. Try IDM-VTON first (photorealistic, fast)
-        if settings.REPLICATE_API_TOKEN:
+        # IDM-VTON weights are CC BY-NC-SA (non-commercial): dev only, behind a flag.
+        if settings.REPLICATE_API_TOKEN and settings.ENABLE_IDM_VTON:
             logger.info(f"IDM-VTON ({idx+1}/{len(ai_items)}): '{item.name}' [{cat}]")
             result_bytes = await _try_on_idm(
                 body_bytes=current_person,

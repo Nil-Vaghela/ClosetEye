@@ -1,3 +1,5 @@
+from pydantic import field_serializer
+from app.services.storage import sign_url
 from pydantic import BaseModel, Field
 from uuid import UUID
 from datetime import datetime
@@ -23,6 +25,10 @@ class UserResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("avatar_url", "body_photo_url", "body_silhouette_url")
+    def _sign(self, v):
+        return sign_url(v)
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -46,3 +52,9 @@ class BodyModelResponse(BaseModel):
     body_model_ready: bool
 
     model_config = {"from_attributes": True}
+
+    @field_serializer("body_photo_url", "body_silhouette_url")
+    def _sign(self, v):
+        return sign_url(v)
+
+

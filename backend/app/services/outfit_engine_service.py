@@ -27,6 +27,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.services.storage import sign_url
 from app.models.clothing import ClothingItem, ClothingCategory
 from app.models.outfit_engine import (
     DailyOutfit,
@@ -81,6 +82,41 @@ _CLASHING_PAIRS: set[str] = {
     _p("yellow", "green"), _p("purple", "brown"),
     _p("blue", "green"),  # same spectrum, hard to pull off
 }
+
+
+# Named palette for mapping hex colors (from AI tagging) onto the harmony tables.
+_PALETTE: dict[str, tuple[int, int, int]] = {
+    "white": (245, 245, 245), "cream": (240, 230, 205), "beige": (214, 196, 160),
+    "black": (20, 20, 20), "charcoal": (60, 60, 64), "grey": (140, 140, 140),
+    "navy": (30, 40, 80), "blue": (60, 110, 190), "camel": (190, 145, 90),
+    "brown": (110, 70, 40), "olive": (110, 115, 50), "green": (50, 140, 70),
+    "red": (190, 35, 40), "burgundy": (110, 25, 45), "pink": (235, 150, 180),
+    "coral": (245, 120, 100), "orange": (240, 130, 30), "mustard": (210, 165, 40),
+    "yellow": (245, 220, 60), "purple": (120, 60, 150),
+}
+
+
+def color_to_name(c: str | None) -> str | None:
+    """'navy' -> 'navy'; '#1F2A44' -> nearest palette name; junk -> None."""
+    if not c:
+        return None
+    c = c.strip().lower()
+    if not c.startswith("#"):
+        return c
+    h = c.lstrip("#")
+    if len(h) == 3:
+        h = "".join(ch * 2 for ch in h)
+    try:
+        r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    except (ValueError, IndexError):
+        return None
+
+    def dist(p):  # weighted RGB distance (cheap perceptual approximation)
+        pr, pg, pb = p
+        rm = (r + pr) / 2
+        return (2 + rm / 256) * (r - pr) ** 2 + 4 * (g - pg) ** 2 + (2 + (255 - rm) / 256) * (b - pb) ** 2
+
+    return min(_PALETTE, key=lambda n: dist(_PALETTE[n]))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -154,13 +190,7 @@ def _score_color(items: list[ClothingItem]) -> int:
     if not items:
         return 12  # neutral fallback
 
-    colors = []
-    for item in items:
-        c = item.color_primary
-        if c:
-            # Strip hex codes — if it starts with #, skip (no name to compare)
-            if not c.startswith("#"):
-                colors.append(c.lower().strip())
+    colors = [n for n in (color_to_name(i.color_primary) for i in items) if n]
 
     if len(colors) < 2:
         return 15  # single color — OK, default mid score
@@ -304,8 +334,7 @@ def _score_style_consistency(
     # Preference weight bonus/penalty
     pref_adjustment = 0
     if user_prefs:
-        colors = [item.color_primary.lower().strip() for item in items
-                  if item.color_primary and not item.color_primary.startswith("#")]
+        colors = [n for n in (color_to_name(i.color_primary) for i in items) if n]
         for a, b in combinations(colors, 2):
             key = _p(a, b)
             w = user_prefs.color_pair_weights.get(key, 0.0)
@@ -391,10 +420,7 @@ def _cat(item: ClothingItem) -> str:
 
 
 def _color_name(item: ClothingItem) -> str | None:
-    c = item.color_primary
-    if not c or c.startswith("#"):
-        return None
-    return c.lower().strip()
+    return color_to_name(item.color_primary)
 
 
 def _pair_key(a: str, b: str) -> str:
@@ -979,7 +1005,7 @@ async def get_overused_items(db: AsyncSession, user_id: uuid.UUID, threshold: in
             "name": i.name,
             "category": _cat(i),
             "total_wears": i.total_wears,
-            "image_url": i.cleaned_image_url or i.original_image_url,
+            "image_url": sign_url(i.cleaned_image_url or i.original_image_url),
         }
         for i in result.scalars().all()
     ]

@@ -17,7 +17,39 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.clothing import ClothingItem
 from app.models.ai_suggestion import AISuggestion
-from app.services.ai_service import ai_service
+from app.models.outfit_engine import UserStylePreferences
+from app.services import outfit_engine_service as oe
+from app.services.storage import sign_url
+
+_SEASON_TEMP = {"winter": 3.0, "fall": 13.0, "spring": 16.0, "summer": 28.0}
+
+
+async def _engine_suggestions(db, user_id, items, occasion) -> list[dict]:
+    """Free, algorithmic suggestions (no LLM call) in the shape the app expects."""
+    prefs = (await db.execute(
+        select(UserStylePreferences).where(UserStylePreferences.user_id == user_id)
+    )).scalar_one_or_none()
+    picks = oe._build_outfits(items, items, temp_c=None, occasion=occasion,
+                              user_prefs=prefs, count=5, seed=int(datetime.now().timestamp()))
+    by_id = {str(i.id): i for i in items}
+    out = []
+    for p in picks:
+        pieces = [by_id[i] for i in p["item_ids"] if i in by_id]
+        colors = [c for c in (oe._color_name(i) for i in pieces) if c]
+        name = (" & ".join(dict.fromkeys(c.title() for c in colors[:2])) or "Easy") + " " + (
+            (occasion or "everyday").title())
+        warnings = ["These colors are a bold mix"] if p["breakdown"]["color"] < 8 else []
+        out.append({
+            "name": name,
+            "item_ids": p["item_ids"],
+            "description": p["reason"],
+            "occasion": occasion or "casual",
+            "style_notes": p["reason"],
+            "compatibility_score": p["confidence_score"],
+            "warnings": warnings,
+            "missing_piece": None,
+        })
+    return out
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -65,7 +97,7 @@ async def _enrich(suggestions: list[dict], items: list[ClothingItem]) -> list[di
                     "name":      item.name,
                     "category":  item.category.value if hasattr(item.category, "value") else str(item.category),
                     "color":     item.color_primary,
-                    "image_url": item.cleaned_image_url or item.original_image_url,
+                    "image_url": sign_url(item.cleaned_image_url or item.original_image_url),
                 })
         rich.append({**s, "items": outfit_items, "item_ids": [i["id"] for i in outfit_items]})
     return rich
@@ -131,7 +163,6 @@ async def generate_suggestions(
         return {"outfits": [], "is_stale": False, "never_generated": False, "shopping_suggestions": []}
 
     current_hash = _wardrobe_hash([str(i.id) for i in items])
-    items_data   = _items_to_ai_data(items)
 
     if not season:
         m = datetime.now().month
@@ -140,7 +171,7 @@ async def generate_suggestions(
                   "fall"   if 9 <= m <= 11 else "winter")
 
     logger.info(f"Generating suggestions for {len(items)} items (occasion={occasion}, season={season})")
-    suggestions = await ai_service.suggest_outfits(items_data, occasion=occasion, season=season)
+    suggestions = await _engine_suggestions(db, current_user.id, items, occasion)
 
     # Persist / upsert
     result = await db.execute(

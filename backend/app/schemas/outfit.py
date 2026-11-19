@@ -1,3 +1,5 @@
+from pydantic import field_serializer
+from app.services.storage import sign_url
 from pydantic import BaseModel
 from uuid import UUID
 from datetime import datetime
@@ -22,6 +24,10 @@ class OutfitResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_serializer("preview_image_url")
+    def _sign(self, v):
+        return sign_url(v)
+
 
 class SuggestionRequest(BaseModel):
     occasion: str | None = None  # e.g. "work", "casual", "date night"
@@ -42,3 +48,9 @@ class TryOnRequest(BaseModel):
 class TryOnResponse(BaseModel):
     preview_image_url: str  # generated try-on image
     processing_time_ms: int
+
+    @field_serializer("preview_image_url")
+    def _sign(self, v):
+        return sign_url(v)
+
+

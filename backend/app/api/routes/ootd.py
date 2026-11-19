@@ -6,14 +6,16 @@ Handle outfit-of-the-day logging for engagement tracking.
 import logging
 from datetime import date, datetime, timezone, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.models.clothing import ClothingItem
 from app.models.ootd import OOTDLog
+from app.models.outfit import Outfit
 from app.schemas.ootd import OOTDLogCreate, OOTDLogResponse, StreakResponse, CalendarResponse
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,19 @@ async def log_ootd(
             detail="Either outfit_id or custom_item_ids must be provided.",
         )
 
+    if payload.outfit_id:
+        own = await db.execute(select(Outfit.id).where(Outfit.id == payload.outfit_id, Outfit.owner_id == current_user.id))
+        if own.scalar_one_or_none() is None:
+            raise HTTPException(status_code=422, detail="That outfit isn't yours.")
+    if payload.custom_item_ids:
+        ids = list(dict.fromkeys(payload.custom_item_ids))
+        owned = (await db.execute(
+            select(func.count()).select_from(ClothingItem)
+            .where(ClothingItem.id.in_(ids), ClothingItem.owner_id == current_user.id)
+        )).scalar_one()
+        if owned != len(ids):
+            raise HTTPException(status_code=422, detail="Some of those items aren't in your closet.")
+
     try:
         log = OOTDLog(
             user_id=current_user.id,
@@ -70,7 +85,7 @@ async def log_ootd(
 
 @router.get("", response_model=list[OOTDLogResponse])
 async def list_ootd_history(
-    days: int = 90,
+    days: int = Query(90, ge=1, le=730),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):

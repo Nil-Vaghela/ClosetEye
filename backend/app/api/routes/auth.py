@@ -14,7 +14,8 @@ Returning users: is_new_user=False, full_name set → mobile goes straight to ho
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from app.services import storage
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -34,7 +35,7 @@ class PhoneLoginRequest(BaseModel):
 
 
 class ProfileUpdateRequest(BaseModel):
-    full_name: str | None = None
+    full_name: str | None = Field(None, max_length=80)
     avatar_url: str | None = None
 
 
@@ -50,8 +51,11 @@ async def phone_login(
     try:
         info = verify_firebase_token(payload.firebase_token)
     except FirebaseAuthError as e:
-        logger.error("Firebase auth failed: %s", e)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(e))
+        logger.warning("Firebase auth failed: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="We couldn't verify your sign in. Please try again.",
+        )
 
     firebase_uid   = info["firebase_uid"]
     phone_number   = info["phone_number"]
@@ -76,15 +80,15 @@ async def phone_login(
             await db.commit()
             await db.refresh(user)
 
-    except Exception as e:
-        logger.exception("Database error in phone_login for %s", phone_number)
+    except Exception:
+        logger.exception("Database error in phone_login")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {type(e).__name__}: {e}",
+            detail="Something went wrong signing you in. Please try again.",
         )
 
     token = create_access_token(subject=str(user.id))
-    logger.info("Phone login: %s (new=%s)", phone_number, is_new)
+    logger.info("Phone login: user=%s new=%s", user.id, is_new)
 
     return TokenResponse(
         access_token=token,
@@ -106,17 +110,16 @@ async def update_profile(
     if payload.full_name is not None:
         current_user.full_name = payload.full_name
     if payload.avatar_url is not None:
-        current_user.avatar_url = payload.avatar_url
+        # Only the user's own uploaded files; never arbitrary external URLs.
+        current_user.avatar_url = storage.normalize_owned(payload.avatar_url, current_user.id)
 
     try:
         await db.commit()
         await db.refresh(current_user)
-    except Exception as e:
-        logger.exception("Database error updating profile for user %s", current_user.id)
+    except Exception:
+        logger.exception("Database error updating profile")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database error: {type(e).__name__}: {e}",
+            detail="Couldn't save your profile. Please try again.",
         )
-
-    logger.info("Profile updated for user %s: name=%s", current_user.id, current_user.full_name)
     return UserResponse.model_validate(current_user)

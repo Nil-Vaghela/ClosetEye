@@ -3,7 +3,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -12,6 +12,8 @@ from app.models.user import User
 from app.services.file_service import file_service
 from app.services.tryon_service import generate_try_on_preview
 from app.services.flatlay_service import generate_flatlay
+from app.services import quota
+from app.services.storage import sign_url
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -19,7 +21,7 @@ router = APIRouter()
 
 class TryOnPreviewRequest(BaseModel):
     """Request body for try-on preview generation."""
-    item_ids: list[UUID]
+    item_ids: list[UUID] = Field(..., max_length=6)
     shopping_item_ids: list[UUID] | None = None
 
 
@@ -68,6 +70,7 @@ async def generate_try_on(
             detail="At least one item ID is required.",
         )
 
+    await quota.consume(db, current_user.id, "tryon")
     try:
         # ── Generate try-on preview ────────────────────────────────────────────
         logger.info(f"Generating try-on for {len(request.item_ids)} items")
@@ -86,16 +89,18 @@ async def generate_try_on(
             "png",
         )
 
-        logger.info(f"Try-on preview generated: {preview_url}")
-        return TryOnPreviewResponse(preview_url=preview_url)
+        return TryOnPreviewResponse(preview_url=sign_url(preview_url))
 
     except HTTPException:
         raise
+    except (RuntimeError, FileNotFoundError) as exc:
+        logger.warning("Try-on could not run: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        logger.error(f"Try-on generation failed: {exc}")
+        logger.exception("Try-on generation failed")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate try-on preview: {str(exc)}",
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Try on is having a moment. Please try again soon.",
         ) from exc
 
 
@@ -105,7 +110,7 @@ async def generate_try_on(
 
 class FlatLayRequest(BaseModel):
     """Request body for outfit flatlay generation."""
-    item_ids: list[UUID]
+    item_ids: list[UUID] = Field(..., max_length=8)
 
 
 class FlatLayResponse(BaseModel):
@@ -133,9 +138,11 @@ async def generate_outfit_flatlay(
             detail="At least one item ID is required.",
         )
 
+    await quota.consume(db, current_user.id, "flatlay")
     try:
         logger.info(f"Generating flatlay for {len(request.item_ids)} items")
         flatlay_bytes = await generate_flatlay(
+            current_user.id,
             item_ids=[str(id_) for id_ in request.item_ids],
             db=db,
         )
@@ -146,14 +153,16 @@ async def generate_outfit_flatlay(
             "png",
         )
 
-        logger.info(f"Flatlay saved: {flatlay_url}")
-        return FlatLayResponse(flatlay_url=flatlay_url)
+        return FlatLayResponse(flatlay_url=sign_url(flatlay_url))
 
     except HTTPException:
         raise
+    except (RuntimeError, FileNotFoundError) as exc:
+        logger.warning("Flatlay could not run: %s", exc)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        logger.error(f"Flatlay generation failed: {exc}", exc_info=True)
+        logger.exception("Flatlay generation failed")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to generate flatlay: {str(exc)}",
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Couldn't build your outfit board right now. Please try again soon.",
         ) from exc

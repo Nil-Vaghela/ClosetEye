@@ -3,8 +3,11 @@ import asyncio
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
-from pydantic import BaseModel
+from datetime import timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -21,23 +24,24 @@ from app.services.garment_service import (
     crop_item_from_photo, isolate_person, crop_item_by_category,
 )
 from app.services.ai_service import ai_service
+from app.services import quota, storage
+from app.services.image_upload import read_clean_image
+from app.services.item_cleanup import remove_item_everywhere
+from app.services.storage import sign_url
+
+
+async def _cached_llm(db, user_id, feature: str, items_data: list, produce):
+    """LLM wardrobe analyses are cached per wardrobe snapshot for 7 days; a miss uses LLM quota."""
+    key = quota.cache_key(feature, str(user_id), items_data)
+
+    async def _miss():
+        await quota.consume(db, user_id, "llm")
+        return await produce()
+
+    return await quota.cached(db, key, timedelta(days=7), _miss)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-def _sniff_mime(data: bytes, fallback: str = "unknown") -> str:
-    """Detect real MIME type from magic bytes.
-    Flutter/mobile often sends application/octet-stream regardless of format."""
-    if data[:3] == b"\xff\xd8\xff":
-        return "image/jpeg"
-    if data[:8] == b"\x89PNG\r\n\x1a\n":
-        return "image/png"
-    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
-        return "image/webp"
-    if data[4:8] in (b"ftyp", b"heic", b"heix"):
-        return "image/heic"
-    return fallback
 
 
 @router.post("/items", response_model=ClothingItemResponse, status_code=201)
@@ -63,22 +67,8 @@ async def upload_clothing_item(
     - category: optional override for detected category
     - name: optional item name
     """
-    # ── 1. Validate file type and size ──────────────────────────────────────────
-    image_bytes = await image.read()
-
-    detected_mime = _sniff_mime(image_bytes, fallback=image.content_type or "unknown")
-    allowed_types = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-    if detected_mime not in allowed_types:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported image type '{detected_mime}'. Use JPEG, PNG, or WEBP.",
-        )
-    max_bytes = settings.MAX_FILE_SIZE_MB * 1024 * 1024
-    if len(image_bytes) > max_bytes:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Image must be under {settings.MAX_FILE_SIZE_MB} MB.",
-        )
+    image_bytes = await read_clean_image(image)
+    await quota.consume(db, current_user.id, "item_upload")
 
     try:
         # ── 2. Save original image ─────────────────────────────────────────────
@@ -91,15 +81,12 @@ async def upload_clothing_item(
 
         # ── 3. Detect photo type (worn vs flatlay) ────────────────────────────
         logger.info("Detecting photo type")
-        photo_type = detect_photo_type_heuristic(image_bytes)
+        # CPU-heavy steps run in a worker thread so the API stays responsive.
+        def _process() -> bytes:
+            photo_type = detect_photo_type_heuristic(image_bytes)
+            return dewrinkle_and_clean(extract_garment(image_bytes, photo_type))
 
-        # ── 4. Extract garment (background removal) ───────────────────────────
-        logger.info("Extracting garment with rembg")
-        garment_bytes = extract_garment(image_bytes, photo_type)
-
-        # ── 5. Dewrinkle and clean ────────────────────────────────────────────
-        logger.info("Dewrinkling and cleaning")
-        cleaned_bytes = dewrinkle_and_clean(garment_bytes)
+        cleaned_bytes = await run_in_threadpool(_process)
 
         # ── 6. Save cleaned image ──────────────────────────────────────────────
         logger.info("Saving cleaned image")
@@ -183,24 +170,28 @@ async def upload_clothing_item(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.error(f"Upload failed: {exc}")
+        logger.exception("Upload failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Upload processing failed: {str(exc)}",
+            detail="We couldn't process that photo. Please try another one.",
         ) from exc
 
 
 @router.get("/items", response_model=list[ClothingItemResponse])
 async def list_clothing_items(
     category: ClothingCategory | None = None,
+    limit: int = Query(500, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all items in the user's wardrobe, optionally filtered by category."""
+    """List items in the user's wardrobe (newest first), optionally filtered by category."""
     query = select(ClothingItem).where(ClothingItem.owner_id == current_user.id)
     if category:
         query = query.where(ClothingItem.category == category)
-    result = await db.execute(query.order_by(ClothingItem.created_at.desc()))
+    result = await db.execute(
+        query.order_by(ClothingItem.created_at.desc(), ClothingItem.id).limit(limit).offset(offset)
+    )
     return result.scalars().all()
 
 
@@ -259,17 +250,18 @@ async def delete_clothing_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    # Clean up image files
-    try:
-        if item.original_image_url:
-            await file_service.delete(item.original_image_url)
-        if item.cleaned_image_url:
-            await file_service.delete(item.cleaned_image_url)
-    except Exception as exc:
-        logger.warning(f"Failed to clean up files: {exc}")
-
-    await db.delete(item)
+    await remove_item_everywhere(db, item)
     await db.commit()
+
+    # Files last: only once the DB no longer references them.
+    for url in {item.original_image_url, item.cleaned_image_url}:
+        others = await db.execute(
+            select(ClothingItem.id).where(
+                (ClothingItem.original_image_url == url) | (ClothingItem.cleaned_image_url == url)
+            ).limit(1)
+        )
+        if url and others.scalar_one_or_none() is None:
+            storage.delete(url)
 
 
 # ── Analysis endpoints ─────────────────────────────────────────────────────
@@ -301,8 +293,8 @@ async def get_style_dna(
         for item in items
     ]
 
-    # Get analysis from AI
-    analysis = await ai_service.analyze_style_dna(items_data)
+    analysis, _ = await _cached_llm(db, current_user.id, "style_dna", items_data,
+                                    lambda: ai_service.analyze_style_dna(items_data))
     return analysis
 
 
@@ -397,8 +389,8 @@ async def get_gap_analysis(
         for item in items
     ]
 
-    # Get analysis from AI
-    analysis = await ai_service.wardrobe_gap_analysis(items_data)
+    analysis, _ = await _cached_llm(db, current_user.id, "gap", items_data,
+                                    lambda: ai_service.wardrobe_gap_analysis(items_data))
     return analysis
 
 
@@ -425,7 +417,8 @@ async def get_shopping_suggestions(
         for item in items
     ]
 
-    analysis = await ai_service.wardrobe_gap_analysis(items_data)
+    analysis, _ = await _cached_llm(db, current_user.id, "gap", items_data,
+                                    lambda: ai_service.wardrobe_gap_analysis(items_data))
     return analysis
 
 
@@ -449,15 +442,8 @@ async def extract_items_from_photo(
     5. Place on white background → professional product shot
     6. Skip accessories (sunglasses, watch, necklace) — too small to crop
     """
-    image_bytes = await image.read()
-
-    detected_mime = _sniff_mime(image_bytes)
-    allowed = {"image/jpeg", "image/png", "image/webp", "image/heic"}
-    if detected_mime not in allowed:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Unsupported image type '{detected_mime}'.",
-        )
+    image_bytes = await read_clean_image(image)
+    await quota.consume(db, current_user.id, "extract")
 
     # Save original photo
     _, original_url = await file_service.save(
@@ -482,25 +468,28 @@ async def extract_items_from_photo(
     if not clothing_items:
         clothing_items = items  # fallback: keep all
 
-    # ── Step 3: GPT-4V precision description → DALL-E 3 HD product image ─
-    # For each garment, GPT-4V writes a 50-word exact description of how
-    # that specific garment looks in the photo, then DALL-E 3 HD generates
-    # a matching flat-lay product shot on clean gray background.
-    logger.info(f"Generating precision product images for {len(clothing_items)} items")
+    # ── Step 3: product image per garment ──────────────────────────────────
+    # Default: a real cutout of the user's actual garment (free, on our CPU).
+    # Optional (flag): AI re-render, which costs money and isn't the real garment.
+    isolated = None
+    if not settings.ENABLE_AI_PRODUCT_RENDER:
+        isolated = await run_in_threadpool(isolate_person, image_bytes)
 
     async def _gen_product(item_data: dict) -> dict:
         try:
-            product_bytes = await ai_service.generate_product_image(
-                attributes=item_data,
-                full_photo_bytes=image_bytes,
-            )
+            if settings.ENABLE_AI_PRODUCT_RENDER:
+                product_bytes = await ai_service.generate_product_image(
+                    attributes=item_data, full_photo_bytes=image_bytes,
+                )
+            else:
+                product_bytes = await run_in_threadpool(
+                    crop_item_by_category, isolated, (item_data.get("category") or "other")
+                )
             if product_bytes:
                 _, url = await file_service.save(
-                    product_bytes,
-                    f"garments/{current_user.id}/extracted",
-                    "png",
+                    product_bytes, f"garments/{current_user.id}/extracted", "png",
                 )
-                item_data["product_image_url"] = url
+                item_data["product_image_url"] = sign_url(url)
             else:
                 item_data["product_image_url"] = None
         except Exception as exc:
@@ -510,7 +499,7 @@ async def extract_items_from_photo(
 
     results = await asyncio.gather(*[_gen_product(item) for item in clothing_items])
     logger.info(f"Extraction complete: {len(results)} items")
-    return {"original_image_url": original_url, "items": results}
+    return {"original_image_url": sign_url(original_url), "items": results}
 
 
 class _BatchItem(BaseModel):
@@ -532,7 +521,7 @@ class _BatchItem(BaseModel):
 
 class _BatchAddRequest(BaseModel):
     original_image_url: str
-    items: list[_BatchItem]
+    items: list[_BatchItem] = Field(..., min_length=1, max_length=12)
 
 
 @router.post("/batch-add", response_model=list[ClothingItemResponse], status_code=201)
@@ -547,6 +536,10 @@ async def batch_add_items(
     Called after POST /extract-items — the client sends back the
     original photo URL and the subset of items the user selected.
     """
+    original_url = storage.normalize_owned(payload.original_image_url, current_user.id)
+    if original_url is None:
+        raise HTTPException(status_code=422, detail="That photo couldn't be found. Please scan it again.")
+
     created: list[ClothingItem] = []
 
     for item_data in payload.items:
@@ -591,8 +584,8 @@ async def batch_add_items(
             color_secondary=color_secondary,
             season=ssn,
             tags=tags,
-            original_image_url=payload.original_image_url,
-            cleaned_image_url=item_data.product_image_url,
+            original_image_url=original_url,
+            cleaned_image_url=storage.normalize_owned(item_data.product_image_url, current_user.id),
         )
         db.add(item)
         created.append(item)
