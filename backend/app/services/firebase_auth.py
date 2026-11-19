@@ -32,7 +32,7 @@ def _init_firebase():
 
     service_account_path = settings.FIREBASE_SERVICE_ACCOUNT_PATH
 
-    if os.path.exists(service_account_path):
+    if os.path.isfile(service_account_path):
         cred = credentials.Certificate(service_account_path)
         firebase_admin.initialize_app(cred)
         logger.info("Firebase Admin initialized from %s", service_account_path)
@@ -42,6 +42,14 @@ def _init_firebase():
         cred = credentials.Certificate(sa_dict)
         firebase_admin.initialize_app(cred)
         logger.info("Firebase Admin initialized from env JSON")
+    elif settings.FIREBASE_PROJECT_ID:
+        # Verifying ID tokens only needs the project id + Google's public certs.
+        # No private key required, so production carries no Firebase secret.
+        firebase_admin.initialize_app(
+            credentials.ApplicationDefault() if os.environ.get("K_SERVICE") else _NoCredential(),
+            options={"projectId": settings.FIREBASE_PROJECT_ID},
+        )
+        logger.info("Firebase Admin initialized keyless for project %s", settings.FIREBASE_PROJECT_ID)
     else:
         raise RuntimeError(
             "Firebase not configured. "
@@ -50,6 +58,14 @@ def _init_firebase():
         )
 
     _initialized = True
+
+
+class _NoCredential(credentials.Base):
+    """Placeholder credential: token verification never calls it."""
+
+    def get_credential(self):
+        from google.auth.credentials import AnonymousCredentials
+        return AnonymousCredentials()
 
 
 class FirebaseAuthError(Exception):

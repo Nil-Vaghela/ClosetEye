@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # ── Firebase ────────────────────────────────────────────
     FIREBASE_SERVICE_ACCOUNT_PATH: str = "/app/firebase-service-account.json"
     FIREBASE_SERVICE_ACCOUNT_JSON: str = ""
+    FIREBASE_PROJECT_ID: str = "closeteye-c2c03"  # keyless token verification
 
     # ── AI provider ─────────────────────────────────────────
     # "vertex" = Google Gemini on Vertex AI (billed to Google Cloud), "openai" = OpenAI.
