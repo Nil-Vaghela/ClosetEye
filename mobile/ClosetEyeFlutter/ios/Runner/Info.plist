@@ -41,11 +41,13 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Drape needs camera access to photograph your clothes</string>
+	<string>Drape uses your camera to snap photos of your clothes and your full body photo for try on.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Drape needs permission to save photos</string>
+	<string>Drape saves your outfit and try on images to your photos when you tap Save.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Drape needs photo library access to add clothes from your gallery</string>
+	<string>Drape lets you pick photos of your clothes from your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Drape uses your approximate location to check today's weather so your outfit fits it. We never store your location.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

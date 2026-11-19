@@ -11,8 +11,6 @@ alembic==1.14.*
 
 # ── Auth ────────────────────────────────────────────────────
 pyjwt==2.*
-passlib[bcrypt]==1.7.*
-bcrypt==4.*
 firebase-admin==6.*       # Verify Firebase phone auth ID tokens
 cryptography==43.*
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'secure_storage.dart';
 import 'app_config.dart';
 
@@ -29,7 +30,75 @@ String get _serverOrigin => AppConfig.serverUrl;
 /// but not from a real device — delegates to AppConfig.fixUrl).
 String fixUrl(String url) => AppConfig.fixUrl(url);
 
+/// User-facing API error. `toString()` is the friendly message only.
+class ApiException implements Exception {
+  final int? statusCode;
+  final String message;
+  ApiException(this.message, {this.statusCode});
+  @override
+  String toString() => message;
+}
+
+/// HTTP client used for every API call.
+/// - Adds `X-UTC-Offset` so the server knows the user's local "today".
+/// - On 401, silently re-exchanges the Firebase ID token for a fresh API token
+///   and retries once. If that fails the session is over: [ApiClient.onSessionExpired].
+class _AuthClient extends http.BaseClient {
+  final http.Client _inner = http.Client();
+  Future<bool>? _refreshing;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    request.headers['X-UTC-Offset'] = DateTime.now().timeZoneOffset.inMinutes.toString();
+    final hadAuth = request.headers.containsKey('Authorization');
+    final retryCopy = (hadAuth && request is http.Request) ? _copy(request) : null;
+
+    final res = await _inner.send(request).timeout(const Duration(seconds: 120));
+    if (res.statusCode != 401 || !hadAuth) return res;
+
+    final ok = await (_refreshing ??= _refresh().whenComplete(() => _refreshing = null));
+    if (!ok) {
+      ApiClient.onSessionExpired?.call();
+      return res;
+    }
+    if (retryCopy == null) return res; // multipart bodies can't be replayed
+    final token = await SecureStorage.getToken();
+    retryCopy.headers['Authorization'] = 'Bearer $token';
+    return _inner.send(retryCopy);
+  }
+
+  http.Request _copy(http.Request r) => http.Request(r.method, r.url)
+    ..headers.addAll(r.headers)
+    ..bodyBytes = r.bodyBytes
+    ..followRedirects = r.followRedirects;
+
+  Future<bool> _refresh() async {
+    try {
+      final fbUser = FirebaseAuth.instance.currentUser;
+      if (fbUser == null) return false;
+      final idToken = await fbUser.getIdToken(true);
+      if (idToken == null) return false;
+      final res = await _inner.post(
+        Uri.parse('$_baseUrl/auth/phone'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'firebase_token': idToken}),
+      );
+      if (res.statusCode != 200) return false;
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      await SecureStorage.saveToken(data['access_token'] as String);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+}
+
+final _client = _AuthClient();
+
 class ApiClient {
+  /// Set by the auth provider: called when the session can't be recovered.
+  static void Function()? onSessionExpired;
+
   static Future<Map<String, String>> _headers({bool auth = true}) async {
     final headers = {'Content-Type': 'application/json'};
     if (auth) {
@@ -42,7 +111,7 @@ class ApiClient {
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> phoneLogin(String firebaseToken) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/auth/phone'),
       headers: await _headers(auth: false),
       body: jsonEncode({'firebase_token': firebaseToken}),
@@ -54,7 +123,7 @@ class ApiClient {
     required String name,
     String? avatarUrl,
   }) async {
-    final res = await http.patch(
+    final res = await _client.patch(
       Uri.parse('$_baseUrl/auth/profile'),
       headers: await _headers(),
       body: jsonEncode({
@@ -69,11 +138,20 @@ class ApiClient {
 
   /// Fetch the current user's full profile (including body model status).
   static Future<Map<String, dynamic>> getMe() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/users/me'),
       headers: await _headers(),
     );
     return _parse(res);
+  }
+
+  /// Permanently delete the account and all data (photos, wardrobe, history).
+  static Future<void> deleteAccount() async {
+    final res = await _client.delete(
+      Uri.parse('$_baseUrl/users/me'),
+      headers: await _headers(),
+    );
+    if (res.statusCode != 204) _parse(res);
   }
 
   // ── Body Model ────────────────────────────────────────────────────────────
@@ -100,14 +178,14 @@ class ApiClient {
         contentType: _imageMimeType(photo.path),
       ));
 
-    final streamed = await request.send();
+    final streamed = await _client.send(request);
     final res = await http.Response.fromStream(streamed);
     return _parse(res);
   }
 
   /// Fetch the current user's body model status.
   static Future<Map<String, dynamic>> getBodyModel() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/users/me/body-model'),
       headers: await _headers(),
     );
@@ -117,7 +195,7 @@ class ApiClient {
   // ── Wardrobe ──────────────────────────────────────────────────────────────
 
   static Future<List<dynamic>> getWardrobe() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/wardrobe/items'),
       headers: await _headers(),
     );
@@ -136,13 +214,13 @@ class ApiClient {
         contentType: _imageMimeType(photo.path),
       ));
 
-    final streamed = await request.send();
+    final streamed = await _client.send(request);
     final res = await http.Response.fromStream(streamed);
     return _parse(res);
   }
 
   static Future<Map<String, dynamic>> getWardrobeItem(String id) async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/wardrobe/items/$id'),
       headers: await _headers(),
     );
@@ -153,7 +231,7 @@ class ApiClient {
     String id,
     Map<String, dynamic> fields,
   ) async {
-    final res = await http.patch(
+    final res = await _client.patch(
       Uri.parse('$_baseUrl/wardrobe/items/$id'),
       headers: await _headers(),
       body: jsonEncode(fields),
@@ -162,7 +240,7 @@ class ApiClient {
   }
 
   static Future<void> deleteItem(String id) async {
-    final res = await http.delete(
+    final res = await _client.delete(
       Uri.parse('$_baseUrl/wardrobe/items/$id'),
       headers: await _headers(),
     );
@@ -183,7 +261,7 @@ class ApiClient {
         contentType: _imageMimeType(photo.path),
       ));
 
-    final streamed = await request.send();
+    final streamed = await _client.send(request);
     final res = await http.Response.fromStream(streamed);
     return _parse(res);
   }
@@ -193,7 +271,7 @@ class ApiClient {
     required String originalImageUrl,
     required List<Map<String, dynamic>> items,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/wardrobe/batch-add'),
       headers: await _headers(),
       body: jsonEncode({
@@ -205,7 +283,7 @@ class ApiClient {
   }
 
   static Future<Map<String, dynamic>> getStyleDna() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/wardrobe/style-dna'),
       headers: await _headers(),
     );
@@ -213,7 +291,7 @@ class ApiClient {
   }
 
   static Future<Map<String, dynamic>> getCapsuleScore() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/wardrobe/capsule-score'),
       headers: await _headers(),
     );
@@ -221,7 +299,7 @@ class ApiClient {
   }
 
   static Future<List<dynamic>> getCostPerWear() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/wardrobe/cost-per-wear'),
       headers: await _headers(),
     );
@@ -229,7 +307,7 @@ class ApiClient {
   }
 
   static Future<Map<String, dynamic>> getGapAnalysis() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/wardrobe/gap-analysis'),
       headers: await _headers(),
     );
@@ -242,7 +320,7 @@ class ApiClient {
     required List<String> itemIds,
     List<String>? shoppingItemIds,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/tryon/preview'),
       headers: await _headers(),
       body: jsonEncode({
@@ -259,7 +337,7 @@ class ApiClient {
   static Future<Map<String, dynamic>> generateFlatlay({
     required List<String> itemIds,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/tryon/flatlay'),
       headers: await _headers(),
       body: jsonEncode({'item_ids': itemIds}),
@@ -270,7 +348,7 @@ class ApiClient {
   // ── Outfits ───────────────────────────────────────────────────────────────
 
   static Future<List<dynamic>> getOutfits() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/outfits'),
       headers: await _headers(),
     );
@@ -282,7 +360,7 @@ class ApiClient {
     required List<String> itemIds,
     String? previewUrl,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/outfits'),
       headers: await _headers(),
       body: jsonEncode({
@@ -295,7 +373,7 @@ class ApiClient {
   }
 
   static Future<void> deleteOutfit(String id) async {
-    final res = await http.delete(
+    final res = await _client.delete(
       Uri.parse('$_baseUrl/outfits/$id'),
       headers: await _headers(),
     );
@@ -306,7 +384,7 @@ class ApiClient {
   /// Returns { outfits, is_stale, never_generated, generated_at, shopping_suggestions }.
   static Future<Map<String, dynamic>> getSuggestions() async {
     final uri = Uri.parse('$_baseUrl/suggestions/');
-    final res = await http.get(uri, headers: await _headers());
+    final res = await _client.get(uri, headers: await _headers());
     final parsed = _parse(res);
     if (parsed is Map<String, dynamic>) return parsed;
     return {'outfits': [], 'is_stale': false, 'never_generated': true, 'shopping_suggestions': []};
@@ -323,7 +401,7 @@ class ApiClient {
     if (season != null) params['season'] = season;
 
     final uri = Uri.parse('$_baseUrl/suggestions/generate').replace(queryParameters: params);
-    final res = await http.post(uri, headers: await _headers());
+    final res = await _client.post(uri, headers: await _headers());
     final parsed = _parse(res);
     if (parsed is Map<String, dynamic>) return parsed;
     return {'outfits': [], 'is_stale': false, 'never_generated': false, 'shopping_suggestions': []};
@@ -343,13 +421,13 @@ class ApiClient {
         contentType: _imageMimeType(photo.path),
       ));
 
-    final streamed = await request.send();
+    final streamed = await _client.send(request);
     final res = await http.Response.fromStream(streamed);
     return _parse(res);
   }
 
 static Future<List<dynamic>> getShoppingItems() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/shopping/items'),
       headers: await _headers(),
     );
@@ -357,7 +435,7 @@ static Future<List<dynamic>> getShoppingItems() async {
   }
 
   static Future<void> deleteShoppingItem(String id) async {
-    final res = await http.delete(
+    final res = await _client.delete(
       Uri.parse('$_baseUrl/shopping/items/$id'),
       headers: await _headers(),
     );
@@ -371,7 +449,7 @@ static Future<List<dynamic>> getShoppingItems() async {
     List<String>? itemIds,
     String? note,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/ootd'),
       headers: await _headers(),
       body: jsonEncode({
@@ -384,7 +462,7 @@ static Future<List<dynamic>> getShoppingItems() async {
   }
 
   static Future<List<dynamic>> getOOTDHistory() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/ootd'),
       headers: await _headers(),
     );
@@ -392,7 +470,7 @@ static Future<List<dynamic>> getShoppingItems() async {
   }
 
   static Future<Map<String, dynamic>> getOOTDStreak() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/ootd/streak'),
       headers: await _headers(),
     );
@@ -402,7 +480,7 @@ static Future<List<dynamic>> getShoppingItems() async {
   static Future<Map<String, dynamic>> getOOTDCalendar(int year, int month) async {
     final uri = Uri.parse('$_baseUrl/ootd/calendar')
         .replace(queryParameters: {'year': year.toString(), 'month': month.toString()});
-    final res = await http.get(uri, headers: await _headers());
+    final res = await _client.get(uri, headers: await _headers());
     return _parse(res);
   }
 
@@ -415,15 +493,17 @@ static Future<List<dynamic>> getShoppingItems() async {
     double? lat,
     double? lon,
     bool forceRefresh = false,
+    List<String> lockIds = const [],
   }) async {
-    final params = <String, String>{
+    final params = <String, dynamic>{
       if (occasion != null) 'occasion': occasion,
-      if (lat != null) 'lat': lat.toString(),
-      if (lon != null) 'lon': lon.toString(),
+      if (lat != null) 'lat': lat.toStringAsFixed(2),
+      if (lon != null) 'lon': lon.toStringAsFixed(2),
       if (forceRefresh) 'force_refresh': 'true',
+      if (lockIds.isNotEmpty) 'lock': lockIds,
     };
     final uri = Uri.parse('$_baseUrl/outfit/daily').replace(queryParameters: params);
-    final res = await http.get(uri, headers: await _headers());
+    final res = await _client.get(uri, headers: await _headers());
     final parsed = _parse(res);
     return parsed is Map<String, dynamic> ? parsed : {};
   }
@@ -434,7 +514,7 @@ static Future<List<dynamic>> getShoppingItems() async {
     String? occasion,
     double? weatherTempC,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/outfit/score'),
       headers: await _headers(),
       body: jsonEncode({
@@ -449,11 +529,11 @@ static Future<List<dynamic>> getShoppingItems() async {
   /// POST /outfit/feedback — submit 👍/👎 on an outfit.
   static Future<Map<String, dynamic>> submitOutfitFeedback({
     required List<String> itemIds,
-    required String feedback, // "like" | "dislike"
+    required String feedback, // "like" | "dislike" | "never_pair"
     String? reason,
     String? dailyOutfitId,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/outfit/feedback'),
       headers: await _headers(),
       body: jsonEncode({
@@ -474,7 +554,7 @@ static Future<List<dynamic>> getShoppingItems() async {
     String? outfitId,
     String? note,
   }) async {
-    final res = await http.post(
+    final res = await _client.post(
       Uri.parse('$_baseUrl/outfit/wear'),
       headers: await _headers(),
       body: jsonEncode({
@@ -492,7 +572,7 @@ static Future<List<dynamic>> getShoppingItems() async {
   static Future<List<dynamic>> getOutfitHistory({int limit = 30}) async {
     final uri = Uri.parse('$_baseUrl/outfit/history')
         .replace(queryParameters: {'limit': limit.toString()});
-    final res = await http.get(uri, headers: await _headers());
+    final res = await _client.get(uri, headers: await _headers());
     return _parse(res) as List<dynamic>;
   }
 
@@ -503,13 +583,13 @@ static Future<List<dynamic>> getShoppingItems() async {
     final uri = Uri.parse('$_baseUrl/outfit/notifications').replace(
       queryParameters: {if (unreadOnly) 'unread_only': 'true'},
     );
-    final res = await http.get(uri, headers: await _headers());
+    final res = await _client.get(uri, headers: await _headers());
     return _parse(res) as List<dynamic>;
   }
 
   /// GET /outfit/notifications/count — unread count for badge.
   static Future<int> getUnreadNotificationCount() async {
-    final res = await http.get(
+    final res = await _client.get(
       Uri.parse('$_baseUrl/outfit/notifications/count'),
       headers: await _headers(),
     );
@@ -519,7 +599,7 @@ static Future<List<dynamic>> getShoppingItems() async {
 
   /// POST /outfit/notifications/{id}/read — mark notification read.
   static Future<void> markNotificationRead(String notificationId) async {
-    await http.post(
+    await _client.post(
       Uri.parse('$_baseUrl/outfit/notifications/$notificationId/read'),
       headers: await _headers(),
     );
@@ -528,17 +608,30 @@ static Future<List<dynamic>> getShoppingItems() async {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   static dynamic _parse(http.Response res) {
-    // Guard against non-JSON responses (HTML error pages, plain-text 500s)
     dynamic body;
     try {
       body = jsonDecode(res.body);
     } catch (_) {
-      throw Exception(
-        'Server error ${res.statusCode}: ${res.body.length > 120 ? res.body.substring(0, 120) : res.body}',
+      throw ApiException(
+        res.statusCode >= 500
+            ? 'Our server hit a snag. Please try again in a moment.'
+            : 'Something went wrong (${res.statusCode}).',
+        statusCode: res.statusCode,
       );
     }
     if (res.statusCode >= 400) {
-      throw Exception(body['detail'] ?? 'Request failed (${res.statusCode})');
+      String? msg;
+      if (body is Map) {
+        final err = body['error'];
+        if (err is Map && err['message'] is String) msg = err['message'] as String;
+        final detail = body['detail'];
+        if (msg == null && detail is String) msg = detail;
+        if (msg == null && detail is List && detail.isNotEmpty) {
+          msg = 'Some details look off. Please check and try again.';
+        }
+      }
+      if (res.statusCode == 401) msg = 'Your session ended. Please sign in again.';
+      throw ApiException(msg ?? 'Request failed (${res.statusCode})', statusCode: res.statusCode);
     }
     return body;
   }

@@ -10,12 +10,16 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
+from app.core.config import settings
 from app.core.database import Base
 from app.models import *  # noqa: F401,F403 — import all models so Alembic sees them
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Always use the app's DATABASE_URL (env / .env), never the placeholder in alembic.ini.
+config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

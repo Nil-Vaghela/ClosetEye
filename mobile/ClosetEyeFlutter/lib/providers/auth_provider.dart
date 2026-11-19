@@ -19,6 +19,9 @@ class AppAuthProvider extends ChangeNotifier {
   bool get isAuthenticated     => _status == AuthStatus.authenticated;
 
   AppAuthProvider() {
+    ApiClient.onSessionExpired = () {
+      if (_status == AuthStatus.authenticated) signOut();
+    };
     _restoreSession();
   }
 
@@ -29,10 +32,34 @@ class AppAuthProvider extends ChangeNotifier {
     if (token != null && user != null) {
       _user   = user;
       _status = AuthStatus.authenticated;
+      _refreshUser();
     } else {
       _status = AuthStatus.unauthenticated;
     }
     notifyListeners();
+  }
+
+  /// Refresh the cached profile in the background so it is never stale.
+  Future<void> _refreshUser() async {
+    try {
+      final fresh = AppUser.fromJson(await ApiClient.getMe());
+      await SecureStorage.saveUser(fresh);
+      _user = fresh;
+      notifyListeners();
+    } catch (_) {
+      // Offline or session expired (handled by onSessionExpired).
+    }
+  }
+
+  // ── Delete account (App Store requirement) ───────────────────────────────
+  Future<void> deleteAccount() async {
+    await ApiClient.deleteAccount();
+    try {
+      await FirebaseAuth.instance.currentUser?.delete();
+    } catch (_) {
+      // Server already deleted the Firebase user; local sign-out below is enough.
+    }
+    await signOut();
   }
 
   // ── Called after Firebase phone OTP verifies successfully ─────────────────
