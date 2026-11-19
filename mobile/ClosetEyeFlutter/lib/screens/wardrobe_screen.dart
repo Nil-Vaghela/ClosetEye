@@ -47,7 +47,7 @@ class _WardrobeScreenState extends State<WardrobeScreen>
     try {
       final data = await ApiClient.getWardrobe();
       setState(() {
-        _items = (data as List).map((j) => ClothingItem.fromJson(j as Map<String, dynamic>)).toList();
+        _items = (data).map((j) => ClothingItem.fromJson(j as Map<String, dynamic>)).toList();
         _loading = false;
       });
     } catch (e) {

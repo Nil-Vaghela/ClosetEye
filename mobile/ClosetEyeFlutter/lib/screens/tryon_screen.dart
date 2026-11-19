@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../core/api_client.dart';
-import '../core/app_config.dart';
 import '../core/theme.dart';
 import '../models/clothing_item.dart';
 import '../models/user.dart';

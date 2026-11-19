@@ -20,6 +20,8 @@ import 'capture_screen.dart';
 import 'mix_match_screen.dart';
 import 'daily_outfit_screen.dart';
 import 'notifications_screen.dart';
+import 'style_dna_screen.dart';
+import 'package:flutter/foundation.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -1105,9 +1107,24 @@ class _ProfileTab extends StatelessWidget {
           const SizedBox(height: 8),
           _SettingsRow(
             icon: Icons.auto_awesome_rounded, label: 'Style DNA',
-            onTap: () {},
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const StyleDnaScreen())),
           ),
           const SizedBox(height: 8),
+          _SettingsRow(
+            icon: Icons.help_outline_rounded, label: 'Help & Support',
+            onTap: () => AppConfig.openPage(AppConfig.supportUrl),
+          ),
+          const SizedBox(height: 8),
+          _SettingsRow(
+            icon: Icons.privacy_tip_outlined, label: 'Privacy Policy',
+            onTap: () => AppConfig.openPage(AppConfig.privacyUrl),
+          ),
+          const SizedBox(height: 8),
+          _SettingsRow(
+            icon: Icons.description_outlined, label: 'Terms of Use',
+            onTap: () => AppConfig.openPage(AppConfig.termsUrl),
+          ),
+          if (kDebugMode) ...[
           const SizedBox(height: 8),
           _SettingsRow(
             icon: Icons.dns_rounded,
@@ -1132,14 +1149,54 @@ class _ProfileTab extends StatelessWidget {
                   builder: (_) => const DevSettingsScreen()),
             ),
           ),
+          ],
           const SizedBox(height: 8),
           _SettingsRow(
             icon: Icons.logout_rounded, label: 'Sign Out',
             onTap: onSignOut, danger: true,
           ),
+          const SizedBox(height: 8),
+          _SettingsRow(
+            icon: Icons.delete_forever_rounded, label: 'Delete Account',
+            onTap: () => _confirmDelete(context), danger: true,
+          ),
+          const SizedBox(height: 24),
         ]),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final auth = context.read<AppAuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently deletes your closet, outfits, history, body photo and every photo you uploaded. '
+          "You can't undo this.",
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep my account')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete forever'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await auth.deleteAccount();
+      if (!context.mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginScreen()), (_) => false);
+      messenger.showSnackBar(const SnackBar(content: Text('Your account and data are deleted.')));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text("Couldn't delete your account. $e")));
+    }
   }
 
   Widget _statusBadge(bool ready) => Container(

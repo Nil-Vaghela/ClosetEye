@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/theme.dart';
+import '../core/app_config.dart';
 import '../widgets/blob_bg.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/app_text_field.dart';
@@ -289,14 +290,25 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                           const SizedBox(height: 16),
                           Center(
-                            child: Text(
-                              'By continuing you agree to our Terms & Privacy Policy',
-                              style: TextStyle(
-                                color: AppColors.textHint,
-                                fontSize: 11,
-                                letterSpacing: 0.2,
-                              ),
-                              textAlign: TextAlign.center,
+                            child: Wrap(
+                              alignment: WrapAlignment.center,
+                              children: [
+                                Text('By continuing you agree to our ',
+                                    style: TextStyle(color: AppColors.textHint, fontSize: 11)),
+                                GestureDetector(
+                                  onTap: () => AppConfig.openPage(AppConfig.termsUrl),
+                                  child: Text('Terms',
+                                      style: TextStyle(color: AppColors.textSecondary, fontSize: 11,
+                                          decoration: TextDecoration.underline)),
+                                ),
+                                Text(' and ', style: TextStyle(color: AppColors.textHint, fontSize: 11)),
+                                GestureDetector(
+                                  onTap: () => AppConfig.openPage(AppConfig.privacyUrl),
+                                  child: Text('Privacy Policy',
+                                      style: TextStyle(color: AppColors.textSecondary, fontSize: 11,
+                                          decoration: TextDecoration.underline)),
+                                ),
+                              ],
                             ),
                           ),
                         ],

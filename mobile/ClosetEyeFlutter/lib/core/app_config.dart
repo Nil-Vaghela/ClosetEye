@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Runtime-configurable server URL.
 ///
@@ -48,6 +50,9 @@ class AppConfig {
 
   /// Call once in main() before runApp().
   static Future<void> init() async {
+    // Release builds always talk to the compiled-in server. The runtime
+    // override exists only for development and can't redirect a store build.
+    if (kReleaseMode) return;
     final stored = await _storage.read(key: _storeKey);
     if (stored != null && stored.trim().isNotEmpty) {
       _serverUrl = _cleanUrl(stored);
@@ -79,6 +84,16 @@ class AppConfig {
   static String fixUrl(String url) => url
       .replaceFirst('http://localhost:8000', _serverUrl)
       .replaceFirst('https://localhost:8000', _serverUrl);
+
+  // ── Public web pages served by the API ───────────────────────────────────────
+
+  static String get privacyUrl => '$_serverUrl/legal/privacy';
+  static String get termsUrl => '$_serverUrl/legal/terms';
+  static String get supportUrl => '$_serverUrl/support';
+
+  static Future<void> openPage(String url) async {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView);
+  }
 
   // ── Quick-pick presets ───────────────────────────────────────────────────────
 

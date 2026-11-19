@@ -6,7 +6,6 @@ import '../widgets/blob_bg.dart';
 import '../widgets/gradient_button.dart';
 import '../widgets/app_text_field.dart';
 import '../providers/auth_provider.dart';
-import 'home_screen.dart';
 import 'body_model_screen.dart';
 
 class ProfileSetupScreen extends StatefulWidget {

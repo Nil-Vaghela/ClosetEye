@@ -24,7 +24,6 @@ MediaType _imageMimeType(String filePath) {
 /// Dynamic base URL — reads from AppConfig which can be changed at runtime
 /// via the Dev Settings screen (Profile → Server Settings).
 String get _baseUrl   => AppConfig.baseUrl;
-String get _serverOrigin => AppConfig.serverUrl;
 
 /// Fix image URLs that the backend stored with 'localhost' (works in Docker
 /// but not from a real device — delegates to AppConfig.fixUrl).
@@ -630,7 +629,7 @@ static Future<List<dynamic>> getShoppingItems() async {
           msg = 'Some details look off. Please check and try again.';
         }
       }
-      if (res.statusCode == 401) msg = 'Your session ended. Please sign in again.';
+      if (res.statusCode == 401) msg = 'Please try that again.';
       throw ApiException(msg ?? 'Request failed (${res.statusCode})', statusCode: res.statusCode);
     }
     return body;

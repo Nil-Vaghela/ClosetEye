@@ -22,7 +22,7 @@ class WardrobeProvider extends ChangeNotifier {
 
     try {
       final data = await ApiClient.getWardrobe();
-      _items = (data as List)
+      _items = (data)
           .map((j) => ClothingItem.fromJson(j))
           .toList();
 

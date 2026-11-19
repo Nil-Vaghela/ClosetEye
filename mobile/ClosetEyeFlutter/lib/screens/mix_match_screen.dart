@@ -41,7 +41,7 @@ class _MixMatchScreenState extends State<MixMatchScreen> {
     try {
       final data = await ApiClient.getWardrobe();
       setState(() {
-        _wardrobe = (data as List)
+        _wardrobe = (data)
             .map((j) => ClothingItem.fromJson(j as Map<String, dynamic>))
             .toList();
         _loading = false;
