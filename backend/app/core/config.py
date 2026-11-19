@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     VERTEX_LOCATION: str = "global"
     VERTEX_TEXT_MODEL: str = "gemini-3-flash-preview"
     VERTEX_IMAGE_MODEL: str = "gemini-2.5-flash-image"
+    VERTEX_IMAGE_FALLBACK_MODEL: str = "gemini-3-pro-image"  # used when the main model is busy (429)
+    VERTEX_TRYON_MODEL: str = "virtual-try-on-001"   # Google's dedicated try-on model
+    VERTEX_TRYON_LOCATION: str = "us-central1"
 
     # ── External AI APIs ────────────────────────────────────
     OPENAI_API_KEY: str = ""
@@ -47,8 +50,9 @@ class Settings(BaseSettings):
     REMOVEBG_API_KEY: str = ""
     # IDM-VTON weights are CC BY-NC-SA (non-commercial). Off unless explicitly enabled for dev.
     ENABLE_IDM_VTON: bool = False
-    # AI re-rendered "product shots" of extracted garments (costly, not the real garment).
-    ENABLE_AI_PRODUCT_RENDER: bool = False
+    # Scanned photos: AI renders a clean catalog photo of each garment (users strongly prefer
+    # this to raw cutouts, which include the person on real-world photos).
+    ENABLE_AI_PRODUCT_RENDER: bool = True
 
     # ── Cost controls ───────────────────────────────────────
     DAILY_AI_BUDGET_USD: float = 15.0

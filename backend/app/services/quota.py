@@ -25,7 +25,7 @@ from app.models.ai_usage import AICache, AIUsage
 # feature -> (settings quota attribute, estimated USD per call, friendly limit message)
 FEATURES: dict[str, tuple[str, float, str]] = {
     "item_upload": ("QUOTA_ITEM_UPLOADS_PER_DAY", 0.003, "You've added a lot today! Add more tomorrow."),
-    "extract":     ("QUOTA_EXTRACT_PER_DAY", 0.03, "You've scanned lots of photos today. More tomorrow!"),
+    "extract":     ("QUOTA_EXTRACT_PER_DAY", 0.35, "You've scanned lots of photos today. More tomorrow!"),
     "tryon":       ("QUOTA_TRYON_PER_DAY", 0.25, "You've used today's try ons. More tomorrow!"),
     "flatlay":     ("QUOTA_FLATLAY_PER_DAY", 0.08, "You've made today's outfit boards. More tomorrow!"),
     "llm":         ("QUOTA_LLM_PER_DAY", 0.01, "Our stylist needs a break. Try again tomorrow!"),
@@ -34,7 +34,8 @@ FEATURES: dict[str, tuple[str, float, str]] = {
 
 # Gemini on Vertex is cheaper per call (approx: flash image ~$0.04/image; flash text fractions of a cent).
 _VERTEX_COST: dict[str, float] = {
-    "item_upload": 0.002, "extract": 0.01, "tryon": 0.10, "flatlay": 0.04, "llm": 0.005,
+    "item_upload": 0.002, "extract": 0.15,  # ~3 garments rendered per scan
+    "tryon": 0.30,  # up to 4 garments per try-on "flatlay": 0.04, "llm": 0.005,
 }
 
 

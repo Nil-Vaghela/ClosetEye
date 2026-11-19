@@ -24,7 +24,7 @@ from functools import partial
 import cv2
 import numpy as np
 from app.services import storage
-from app.services.ai_client import ai_enabled, get_ai_client
+from app.services.ai_client import ai_enabled, get_ai_client, provider
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -688,6 +688,55 @@ def _pil_overlay(body_bytes: bytes, garment_items: list[tuple[str, bytes]]) -> b
 
 # ── Main entry point ───────────────────────────────────────────────────────────
 
+# Google's try-on model handles tops, bottoms, one-pieces and footwear.
+_GOOGLE_VTO_CATS = {"top", "outerwear", "bottom", "dress", "shoes", "other"}
+
+
+async def _try_on_google_vto(body_bytes: bytes, garment_data: list) -> bytes | None:
+    """
+    Dress the user's real body photo with each garment in layer order using
+    Vertex AI `virtual-try-on-001` (commercially licensed, billed to Google Cloud).
+    Each step feeds the previous result back in, so a full outfit builds up.
+    """
+    from google import genai
+    from google.genai import types
+
+    try:
+        client = genai.Client(vertexai=True, project=settings.VERTEX_PROJECT,
+                              location=settings.VERTEX_TRYON_LOCATION)
+        person = _to_jpeg(body_bytes, max_dim=1536)
+        applied = 0
+        for item, gbytes in garment_data:  # already sorted bottom → shoes → dress → top → outerwear
+            cat = (item.category.value if hasattr(item.category, "value") else str(item.category)).lower()
+            if cat not in _GOOGLE_VTO_CATS:
+                continue
+            from app.services.ai_client import _with_retry
+            resp = await _with_retry(lambda: client.aio.models.recontext_image(
+                model=settings.VERTEX_TRYON_MODEL,
+                source=types.RecontextImageSource(
+                    person_image=types.Image(image_bytes=person, mime_type="image/jpeg"),
+                    product_images=[types.ProductImage(
+                        product_image=types.Image(image_bytes=_to_jpeg(gbytes, max_dim=1024), mime_type="image/jpeg")
+                    )],
+                ),
+                config=types.RecontextImageConfig(number_of_images=1, output_mime_type="image/jpeg"),
+            ))
+            imgs = resp.generated_images or []
+            if not imgs or not imgs[0].image or not imgs[0].image.image_bytes:
+                logger.warning("Virtual Try-On returned no image for item %s", item.id)
+                continue
+            person = imgs[0].image.image_bytes
+            applied += 1
+        if applied == 0:
+            return None
+        out = io.BytesIO()
+        Image.open(io.BytesIO(person)).convert("RGB").save(out, format="PNG")
+        return out.getvalue()
+    except Exception:
+        logger.exception("Google Virtual Try-On failed")
+        return None
+
+
 async def generate_try_on_preview(
     user_id: str,
     item_ids: list[str],
@@ -740,6 +789,13 @@ async def generate_try_on_preview(
 
     if not garment_data:
         raise RuntimeError("Could not download any garment images")
+
+    # ── PRIMARY (Google Cloud): Vertex AI Virtual Try-On, one garment at a time ──
+    if provider() == "vertex" and ai_enabled():
+        result = await _try_on_google_vto(body_bytes, garment_data)
+        if result is not None:
+            return result
+        logger.warning("Google Virtual Try-On failed; falling back to the image model")
 
     # ── PRIMARY: IDM-VTON with per-item gpt-image-1 fallback ─────────────────────
     # Separate items: AI-try-on items vs PIL-overlay items (shoes / accessories)

@@ -12,9 +12,11 @@ The Gemini adapter exposes the small slice of the OpenAI SDK the code already us
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import logging
+import random
 from types import SimpleNamespace
 from typing import Any
 
@@ -83,6 +85,24 @@ def _sniff(data: bytes) -> str:
     return "image/jpeg"
 
 
+# New Vertex projects get small per-minute quotas; smooth bursts instead of failing.
+_IMAGE_SLOTS = asyncio.Semaphore(2)
+
+
+async def _with_retry(call, attempts: int = 5):
+    delay = 2.0
+    for i in range(attempts):
+        try:
+            return await call()
+        except Exception as exc:  # google.genai.errors.ClientError carries .code
+            code = getattr(exc, "code", None)
+            retryable = code in (429, 503) or "RESOURCE_EXHAUSTED" in str(exc)
+            if not retryable or i == attempts - 1:
+                raise
+            await asyncio.sleep(delay + random.random())
+            delay *= 2
+
+
 class _Chat:
     def __init__(self, outer: "GeminiCompat"):
         self.completions = SimpleNamespace(create=outer._chat_create)
@@ -139,9 +159,9 @@ class GeminiCompat:
             thinking_config=types.ThinkingConfig(thinking_level="low"),
             response_mime_type="application/json" if wants_json else None,
         )
-        resp = await self._genai.aio.models.generate_content(
+        resp = await _with_retry(lambda: self._genai.aio.models.generate_content(
             model=settings.VERTEX_TEXT_MODEL, contents=contents, config=cfg
-        )
+        ))
         text = resp.text or ""
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=text))])
 
@@ -154,11 +174,20 @@ class GeminiCompat:
             response_modalities=["IMAGE"],
             image_config=types.ImageConfig(aspect_ratio="1:1"),
         )
-        resp = await self._genai.aio.models.generate_content(
-            model=settings.VERTEX_IMAGE_MODEL,
-            contents=[types.Content(role="user", parts=parts)],
-            config=cfg,
-        )
+        async def _call(model: str, attempts: int):
+            return await _with_retry(lambda: self._genai.aio.models.generate_content(
+                model=model, contents=[types.Content(role="user", parts=parts)], config=cfg,
+            ), attempts=attempts)
+
+        async with _IMAGE_SLOTS:
+            try:
+                resp = await _call(settings.VERTEX_IMAGE_MODEL, 3)
+            except Exception as exc:
+                busy = getattr(exc, "code", None) in (429, 503) or "RESOURCE_EXHAUSTED" in str(exc)
+                if not (busy and settings.VERTEX_IMAGE_FALLBACK_MODEL):
+                    raise
+                logger.warning("Image model busy; using fallback %s", settings.VERTEX_IMAGE_FALLBACK_MODEL)
+                resp = await _call(settings.VERTEX_IMAGE_FALLBACK_MODEL, 3)
         for cand in resp.candidates or []:
             for p in (cand.content.parts if cand.content else []) or []:
                 if p.inline_data and p.inline_data.data:
