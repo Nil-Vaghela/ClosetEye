@@ -98,19 +98,25 @@ class _MixMatchScreenState extends State<MixMatchScreen> {
       ].whereType<String>().toList();
 
   /// Called whenever items change — debounces and calls /outfit/score
+  int _scoreRequestId = 0;
+
+  /// Scores the current combo. Only the latest request's result is shown,
+  /// so fast swaps never leave a stale score on screen.
   Future<void> _refreshScore() async {
     final ids = _slottedIds;
+    final requestId = ++_scoreRequestId;
     if (ids.length < 2) {
-      setState(() { _scoreData = null; });
+      setState(() { _scoreData = null; _scoringInProgress = false; });
       return;
     }
-    if (_scoringInProgress) return;
     setState(() => _scoringInProgress = true);
     try {
       final result = await ApiClient.scoreOutfit(itemIds: ids);
-      if (mounted) setState(() { _scoreData = result; _scoringInProgress = false; });
+      if (mounted && requestId == _scoreRequestId) {
+        setState(() { _scoreData = result; _scoringInProgress = false; });
+      }
     } catch (_) {
-      if (mounted) setState(() => _scoringInProgress = false);
+      if (mounted && requestId == _scoreRequestId) setState(() => _scoringInProgress = false);
     }
   }
 

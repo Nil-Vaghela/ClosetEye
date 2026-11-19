@@ -8,13 +8,14 @@ Endpoints:
   POST /feedback                 — submit 👍/👎 on an outfit
   POST /wear                     — log that user wore an outfit today
   GET  /history                  — get outfit wear history
-  GET  /score                    — compute confidence score for any item combo
+  POST /score                    — compute confidence score for any item combo
   GET  /notifications            — list in-app notifications
   POST /notifications/{id}/read  — mark a notification read
   GET  /notifications/count      — unread count badge
 """
 from __future__ import annotations
 
+from datetime import date
 from typing import Optional
 from uuid import UUID
 
@@ -24,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
+from app.core.localtime import local_today
 from app.models.user import User
 from app.services import notification_service as ns
 from app.services import outfit_engine_service as oe
@@ -32,35 +34,32 @@ router = APIRouter()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Pydantic schemas (inline — keep route file self-contained)
+# Schemas
 # ─────────────────────────────────────────────────────────────────────────────
 
-class DailyOutfitRequest(BaseModel):
-    occasion: Optional[str] = Field(None, description="casual | gym | office | date | travel")
-    lat:      Optional[float] = None
-    lon:      Optional[float] = None
-    force_refresh: bool = False
-
-
 class FeedbackRequest(BaseModel):
-    item_ids:       list[str] = Field(..., min_length=1)
-    feedback:       str       = Field(..., pattern="^(like|dislike)$")
-    reason:         Optional[str] = None
-    daily_outfit_id: Optional[str] = None
+    item_ids:        list[UUID] = Field(..., min_length=1, max_length=8)
+    feedback:        str = Field(..., pattern="^(like|dislike|never_pair)$")
+    reason:          Optional[str] = Field(None, max_length=500)
+    daily_outfit_id: Optional[UUID] = None
 
 
 class WearRequest(BaseModel):
-    item_ids:  list[str] = Field(..., min_length=1)
-    worn_date: Optional[str] = Field(None, description="YYYY-MM-DD; defaults to today")
-    occasion:  Optional[str] = None
-    outfit_id: Optional[str] = None
-    note:      Optional[str] = None
+    item_ids:  list[UUID] = Field(..., min_length=1, max_length=8)
+    worn_date: Optional[date] = None
+    occasion:  Optional[str] = Field(None, max_length=50)
+    outfit_id: Optional[UUID] = None
+    note:      Optional[str] = Field(None, max_length=500)
 
 
 class ScoreRequest(BaseModel):
-    item_ids:    list[str] = Field(..., min_length=1)
-    occasion:    Optional[str] = None
-    weather_temp_c: Optional[float] = None
+    item_ids:       list[UUID] = Field(..., min_length=1, max_length=8)
+    occasion:       Optional[str] = Field(None, max_length=50)
+    weather_temp_c: Optional[float] = Field(None, ge=-60, le=60)
+
+
+def _unprocessable(exc: ValueError) -> HTTPException:
+    return HTTPException(status_code=422, detail=str(exc))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -69,35 +68,41 @@ class ScoreRequest(BaseModel):
 
 @router.get("/daily")
 async def get_daily_outfits(
-    occasion:      Optional[str]   = Query(None, description="casual | gym | office | date | travel"),
-    lat:           Optional[float] = Query(None),
-    lon:           Optional[float] = Query(None),
+    occasion:      Optional[str]   = Query(None, max_length=50),
+    lat:           Optional[float] = Query(None, ge=-90, le=90),
+    lon:           Optional[float] = Query(None, ge=-180, le=180),
     force_refresh: bool            = Query(False),
+    lock:          list[UUID]      = Query(default=[], max_length=4,
+                                           description="Item ids to build around"),
+    no_repeat_days: int            = Query(oe.DEFAULT_NO_REPEAT_DAYS, ge=0, le=30),
+    today: date = Depends(local_today),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Get today's outfit suggestions for the user.
-    - Returns cached result if already generated today for the same occasion
-    - Fetches live weather from Open-Meteo if lat/lon provided (no API key required)
-    - Generates 1-3 ranked outfit combos with confidence scores and reasons
+    Today's outfit suggestions (cached per day + occasion).
+    Pass `lock` one or more times to build outfits around specific items.
+    Weather comes from Open-Meteo when lat/lon are given (rounded to ~1 km for privacy).
     """
-    result = await oe.get_or_generate_daily_outfits(
-        db=db,
-        user_id=current_user.id,
-        occasion=occasion,
-        lat=lat,
-        lon=lon,
-        force_refresh=force_refresh,
-    )
+    if lat is not None and lon is not None:
+        lat, lon = round(lat, 2), round(lon, 2)
+    try:
+        result = await oe.get_or_generate_daily_outfits(
+            db=db,
+            user_id=current_user.id,
+            occasion=occasion,
+            lat=lat,
+            lon=lon,
+            force_refresh=force_refresh,
+            today=today,
+            locked_ids=[str(i) for i in lock],
+            no_repeat_days=no_repeat_days,
+        )
+    except ValueError as exc:
+        raise _unprocessable(exc)
 
-    # Trigger morning notification (idempotent — skipped if already sent today)
-    outfit_count = len(result.get("outfits", []))
-    await ns.notify_morning_outfit(db, current_user.id, outfit_count)
-
-    # Check and trigger unused item notifications
+    # Idempotent, at most once a day
     await ns.check_and_notify_unused_items(db, current_user.id)
-
     return result
 
 
@@ -111,42 +116,23 @@ async def score_outfit(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Compute a real confidence score for any combination of items.
-    Use this in Mix & Match and Try-On screens to show score before try-on.
-
-    Returns:
-    {
-        "confidence_score": 82,
-        "breakdown": { "color": 20, "weather": 22, "occasion": 18, "style": 22 }
-    }
-    """
+    """Confidence score (0-100) + breakdown for any combination of your items."""
     from sqlalchemy import select
-    from app.models.clothing import ClothingItem
     from app.models.outfit_engine import UserStylePreferences
-    import uuid
 
-    items_result = await db.execute(
-        select(ClothingItem).where(
-            ClothingItem.id.in_([uuid.UUID(iid) for iid in payload.item_ids]),
-            ClothingItem.owner_id == current_user.id,
-        )
-    )
-    items = list(items_result.scalars().all())
-
-    if not items:
-        raise HTTPException(status_code=404, detail="No matching items found in your wardrobe")
+    try:
+        items = await oe._owned_items(db, current_user.id, payload.item_ids)
+    except ValueError as exc:
+        raise _unprocessable(exc)
 
     pref_result = await db.execute(
         select(UserStylePreferences).where(UserStylePreferences.user_id == current_user.id)
     )
-    prefs = pref_result.scalar_one_or_none()
-
     return oe.compute_confidence_score(
         items=items,
         weather_temp_c=payload.weather_temp_c,
         occasion=payload.occasion,
-        user_prefs=prefs,
+        user_prefs=pref_result.scalar_one_or_none(),
     )
 
 
@@ -164,14 +150,17 @@ async def submit_outfit_feedback(
     Submit 👍/👎 feedback on an outfit suggestion.
     Automatically updates user's style preference weights.
     """
-    return await oe.submit_feedback(
-        db=db,
-        user_id=current_user.id,
-        item_ids=payload.item_ids,
-        feedback=payload.feedback,
-        reason=payload.reason,
-        daily_outfit_id=payload.daily_outfit_id,
-    )
+    try:
+        return await oe.submit_feedback(
+            db=db,
+            user_id=current_user.id,
+            item_ids=payload.item_ids,
+            feedback=payload.feedback,
+            reason=payload.reason,
+            daily_outfit_id=payload.daily_outfit_id,
+        )
+    except ValueError as exc:
+        raise _unprocessable(exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -181,6 +170,7 @@ async def submit_outfit_feedback(
 @router.post("/wear")
 async def log_outfit_worn(
     payload: WearRequest,
+    today: date = Depends(local_today),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -190,15 +180,18 @@ async def log_outfit_worn(
     - Increments total_wears on each ClothingItem
     - Triggers repetition check notification
     """
-    result = await oe.log_worn_outfit(
-        db=db,
-        user_id=current_user.id,
-        item_ids=payload.item_ids,
-        worn_date=payload.worn_date,
-        occasion=payload.occasion,
-        outfit_id=payload.outfit_id,
-        note=payload.note,
-    )
+    try:
+        result = await oe.log_worn_outfit(
+            db=db,
+            user_id=current_user.id,
+            item_ids=payload.item_ids,
+            worn_date=payload.worn_date or today,
+            occasion=payload.occasion,
+            outfit_id=payload.outfit_id,
+            note=payload.note,
+        )
+    except ValueError as exc:
+        raise _unprocessable(exc)
 
     # Check for repetition after logging
     await ns.check_and_notify_repetition(db, current_user.id)

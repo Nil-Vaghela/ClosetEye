@@ -149,8 +149,9 @@ class _TryOnScreenState extends State<TryOnScreen>
         itemIds: _selectedIds.toList(),
         feedback: feedback,
       );
-    } catch (_) {}
-    if (feedback == 'like' || mounted) return;
+    } catch (_) {
+      if (mounted) setState(() => _feedbackGiven = null);
+    }
   }
 
   Future<void> _logWornFromTryOn() async {

@@ -129,6 +129,9 @@ class UserStylePreferences(Base):
     # Occasion preferences — key: occasion string, value: frequency count
     occasion_counts: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
+    # "never pair these": sorted "item_a:item_b" keys that must never be suggested together
+    blocked_item_pairs: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+
     # Total feedbacks processed — used to normalize
     total_likes: Mapped[int] = mapped_column(Integer, default=0)
     total_dislikes: Mapped[int] = mapped_column(Integer, default=0)

@@ -861,7 +861,9 @@ class _OutfitCardState extends State<_OutfitCard> {
     final ids = items.map((e) => e['id'] as String? ?? '').where((id) => id.isNotEmpty).toList();
     try {
       await ApiClient.submitOutfitFeedback(itemIds: ids, feedback: fb);
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _feedbackGiven = null);
+    }
   }
 
   Future<void> _logWorn(List<Map<String, dynamic>> items) async {

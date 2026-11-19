@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../core/theme.dart';
 import '../core/api_client.dart';
+import '../core/location.dart';
 import '../models/daily_outfit.dart';
 import '../models/clothing_item.dart';
 import '../providers/wardrobe_provider.dart';
@@ -48,9 +49,12 @@ class _DailyOutfitScreenState extends State<DailyOutfitScreen>
   Future<void> _load({bool forceRefresh = false}) async {
     setState(() { _loading = true; _error = null; });
     try {
+      final loc = await CoarseLocation.get();
       final raw = await ApiClient.getDailyOutfits(
         occasion: _selectedOccasion?.value,
         forceRefresh: forceRefresh,
+        lat: loc?.lat,
+        lon: loc?.lon,
       );
       final data = DailyOutfit.fromJson(raw);
       setState(() {
@@ -62,6 +66,7 @@ class _DailyOutfitScreenState extends State<DailyOutfitScreen>
       });
       _fadeCtrl.forward(from: 0);
     } catch (e) {
+      if (!mounted) return;
       setState(() { _error = e.toString(); _loading = false; });
     }
   }
@@ -74,19 +79,21 @@ class _DailyOutfitScreenState extends State<DailyOutfitScreen>
         feedback: feedback,
         dailyOutfitId: _dailyOutfitId,
       );
-      if (feedback == 'dislike' && mounted) {
+      if (feedback != 'like' && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: AppColors.textPrimary,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            content: const Text("Got it — we'll learn your style better.",
+            content: Text(feedback == 'never_pair'
+                ? "Got it. We won't pair these again."
+                : "Got it. We'll learn your style.",
                 style: TextStyle(color: Colors.white)),
           ),
         );
       }
     } catch (_) {
-      // Feedback is best-effort — don't interrupt UX
+      if (mounted) setState(() => _feedbackGiven.remove(index));
     }
   }
 
@@ -102,14 +109,14 @@ class _DailyOutfitScreenState extends State<DailyOutfitScreen>
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: const Text("Outfit logged! Your style memory is growing 👗",
+          content: const Text("Logged! Nice look today 👗",
               style: TextStyle(color: Colors.white)),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not log outfit: $e')),
+        SnackBar(content: Text("Couldn't log that outfit. $e")),
       );
     }
   }
@@ -227,6 +234,7 @@ class _DailyOutfitScreenState extends State<DailyOutfitScreen>
               onTap: () => setState(() => _currentOutfitIndex = e.key),
               onLike: () => _submitFeedback(e.value, e.key, 'like'),
               onDislike: () => _submitFeedback(e.value, e.key, 'dislike'),
+              onNeverPair: () => _submitFeedback(e.value, e.key, 'never_pair'),
               onWornTap: () => _logWorn(e.value),
             )),
         const SizedBox(height: 8),
@@ -256,6 +264,7 @@ class _OutfitCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLike;
   final VoidCallback onDislike;
+  final VoidCallback onNeverPair;
   final VoidCallback onWornTap;
 
   const _OutfitCard({
@@ -266,6 +275,7 @@ class _OutfitCard extends StatelessWidget {
     required this.onTap,
     required this.onLike,
     required this.onDislike,
+    required this.onNeverPair,
     required this.onWornTap,
   });
 
@@ -373,6 +383,14 @@ class _OutfitCard extends StatelessWidget {
                     active: feedbackGiven == 'dislike',
                     activeColor: AppColors.error,
                     onTap: feedbackGiven == null ? onDislike : null,
+                  ),
+                  const SizedBox(width: 8),
+                  _FeedbackButton(
+                    icon: Icons.block_rounded,
+                    label: 'Never',
+                    active: feedbackGiven == 'never_pair',
+                    activeColor: AppColors.error,
+                    onTap: feedbackGiven == null ? onNeverPair : null,
                   ),
                   const Spacer(),
                   // "I wore this"

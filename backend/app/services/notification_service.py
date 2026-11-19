@@ -188,7 +188,7 @@ async def check_and_notify_repetition(
     # Fetch item details (cap at 1 notification)
     iid_uuid = [uuid.UUID(iid) for iid in over_worn_ids[:1]]
     items_result = await db.execute(
-        select(ClothingItem).where(ClothingItem.id.in_(iid_uuid))
+        select(ClothingItem).where(ClothingItem.id.in_(iid_uuid), ClothingItem.owner_id == user_id)
     )
     items = list(items_result.scalars().all())
 
