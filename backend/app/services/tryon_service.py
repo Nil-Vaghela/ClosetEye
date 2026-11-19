@@ -24,6 +24,7 @@ from functools import partial
 import cv2
 import numpy as np
 from app.services import storage
+from app.services.ai_client import ai_enabled, get_ai_client
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -456,13 +457,11 @@ async def _try_on_gpt(
     Single-garment gpt-image-1 try-on using the high-precision prompt.
     The prompt is built dynamically with the exact garment name and slot.
     """
-    from openai import AsyncOpenAI
-    api_key = settings.OPENAI_API_KEY
-    if not api_key:
+    if not ai_enabled():
         return None
 
     try:
-        client = AsyncOpenAI(api_key=api_key)
+        client = get_ai_client()
         loop   = asyncio.get_running_loop()
 
         body_png    = await loop.run_in_executor(None, lambda: _make_inpaint_png(body_bytes, category))
@@ -505,13 +504,11 @@ async def _try_on_gpt_multi(
     Pass body + ALL garments in a single gpt-image-1 call using the full
     multi-garment prompt. Better quality than sequential single-item chaining.
     """
-    from openai import AsyncOpenAI
-    api_key = settings.OPENAI_API_KEY
-    if not api_key:
+    if not ai_enabled():
         return None
 
     try:
-        client = AsyncOpenAI(api_key=api_key)
+        client = get_ai_client()
         loop   = asyncio.get_running_loop()
 
         # Make a full-body transparent mask (all clothing zones)
@@ -784,7 +781,7 @@ async def generate_try_on_preview(
                 logger.warning(f"✗ IDM-VTON failed for '{item.name}' — trying gpt-image-1")
 
         # 2. Per-item gpt-image-1 fallback if IDM-VTON failed
-        if result_bytes is None and settings.OPENAI_API_KEY:
+        if result_bytes is None and ai_enabled():
             logger.info(f"gpt-image-1 fallback for '{item.name}' [{cat}]")
             result_bytes = await _try_on_gpt(
                 body_bytes=current_person,
@@ -819,7 +816,7 @@ async def generate_try_on_preview(
     logger.warning("All per-item try-on methods failed, trying gpt-image-1 multi…")
 
     # ── FALLBACK: gpt-image-1 ─────────────────────────────────────────────────
-    if settings.OPENAI_API_KEY:
+    if ai_enabled():
         gpt_items = [
             (
                 (item.category.value if hasattr(item.category, "value")

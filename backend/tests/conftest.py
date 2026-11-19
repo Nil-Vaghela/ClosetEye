@@ -16,6 +16,8 @@ os.environ["SECRET_KEY"] = "test-secret-key-that-is-long-enough-123456"
 os.environ["BASE_URL"] = "http://testserver"
 os.environ.setdefault("UPLOAD_DIR", str(Path(__file__).parent / ".uploads"))
 os.environ["OPENAI_API_KEY"] = ""
+os.environ["VERTEX_PROJECT"] = ""
+os.environ["AI_PROVIDER"] = ""
 
 BACKEND = Path(__file__).resolve().parents[1]
 

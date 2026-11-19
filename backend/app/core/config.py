@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     FIREBASE_SERVICE_ACCOUNT_PATH: str = "/app/firebase-service-account.json"
     FIREBASE_SERVICE_ACCOUNT_JSON: str = ""
 
+    # ── AI provider ─────────────────────────────────────────
+    # "vertex" = Google Gemini on Vertex AI (billed to Google Cloud), "openai" = OpenAI.
+    # Empty = vertex if VERTEX_PROJECT is set, else openai.
+    AI_PROVIDER: str = ""
+    VERTEX_PROJECT: str = ""
+    VERTEX_LOCATION: str = "global"
+    VERTEX_TEXT_MODEL: str = "gemini-3-flash-preview"
+    VERTEX_IMAGE_MODEL: str = "gemini-2.5-flash-image"
+
     # ── External AI APIs ────────────────────────────────────
     OPENAI_API_KEY: str = ""
     REPLICATE_API_TOKEN: str = ""

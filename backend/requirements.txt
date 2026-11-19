@@ -31,3 +31,4 @@ pytest==8.*
 pytest-asyncio==0.24.*
 ruff==0.8.*
 pillow-heif==1.*        # iPhone HEIC uploads
+google-genai==3.*      # Gemini on Vertex AI (default AI provider)

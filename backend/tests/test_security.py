@@ -80,7 +80,7 @@ async def test_flatlay_cannot_use_other_users_items(db, monkeypatch):
     from app.services import flatlay_service
     alice, bob = await make_user(db), await make_user(db)
     bobs = await make_item(db, bob, "top", "red")
-    monkeypatch.setattr(flatlay_service.settings, "OPENAI_API_KEY", "x")
+    monkeypatch.setattr(flatlay_service, "ai_enabled", lambda: True)
     with pytest.raises(RuntimeError, match="No clothing items"):
         await flatlay_service.generate_flatlay(alice.id, item_ids=[str(bobs.id)], db=db)
 
@@ -244,3 +244,45 @@ def test_prod_refuses_unsafe_config():
     with pytest.raises(Exception):
         Settings(_env_file=None, ENV="prod", SECRET_KEY="change-me-in-production", BASE_URL="https://api.x")
     Settings(_env_file=None, ENV="prod", DEBUG=False, SECRET_KEY="k" * 40, BASE_URL="https://api.x")
+
+
+async def test_gemini_adapter_maps_openai_calls(monkeypatch):
+    """The Gemini adapter turns OpenAI-style chat/image calls into Vertex requests."""
+    import base64
+    import io as _io
+    from types import SimpleNamespace as NS
+    from app.services import ai_client
+
+    seen = {}
+
+    class FakeModels:
+        async def generate_content(self, model, contents, config):
+            seen.setdefault("calls", []).append((model, contents, config))
+            if config.response_modalities:
+                buf = _io.BytesIO(); Image.new("RGB", (4, 4)).save(buf, format="JPEG")
+                part = NS(inline_data=NS(data=buf.getvalue()))
+                return NS(candidates=[NS(content=NS(parts=[part]))])
+            return NS(text='{"category":"top"}')
+
+    compat = ai_client.GeminiCompat.__new__(ai_client.GeminiCompat)
+    compat._genai = NS(aio=NS(models=FakeModels()))
+    compat.chat = ai_client._Chat(compat)
+    compat.images = ai_client._Images(compat)
+
+    png = _io.BytesIO(); Image.new("RGB", (4, 4)).save(png, format="PNG")
+    data_url = "data:image/png;base64," + base64.b64encode(png.getvalue()).decode()
+    r = await compat.chat.completions.create(model="gpt-4o-mini", max_tokens=50, messages=[
+        {"role": "system", "content": "be terse"},
+        {"role": "user", "content": [{"type": "image_url", "image_url": {"url": data_url}},
+                                     {"type": "text", "text": "what is it"}]},
+    ])
+    assert r.choices[0].message.content == '{"category":"top"}'
+    model, contents, cfg = seen["calls"][0]
+    assert model == settings.VERTEX_TEXT_MODEL and cfg.system_instruction == "be terse"
+    assert len(contents[0].parts) == 2 and cfg.max_output_tokens >= 2048
+
+    f = _io.BytesIO(png.getvalue()); f.name = "a.png"
+    out = await compat.images.edit(model="gpt-image-1", image=[f, f], prompt="dress them")
+    img = base64.b64decode(out.data[0].b64_json)
+    assert img[:8] == b"\x89PNG\r\n\x1a\n"  # always PNG back
+    assert seen["calls"][1][0] == settings.VERTEX_IMAGE_MODEL and len(seen["calls"][1][1][0].parts) == 3

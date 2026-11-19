@@ -16,7 +16,6 @@ import logging
 
 import httpx
 
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -73,13 +72,12 @@ class AIService:
         self._client = None
 
     def _get_client(self):
-        """Lazily initialize OpenAI async client."""
+        """Gemini (Vertex AI) or OpenAI client behind one interface; None if AI is off."""
         if self._client is None:
-            if not settings.OPENAI_API_KEY:
-                logger.warning("OPENAI_API_KEY not set; AI features will use fallbacks")
-                return None
-            from openai import AsyncOpenAI
-            self._client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            from app.services.ai_client import get_ai_client
+            self._client = get_ai_client()
+            if self._client is None:
+                logger.warning("No AI provider configured; AI features will use fallbacks")
         return self._client
 
     async def detect_photo_type(self, image_bytes: bytes) -> str:

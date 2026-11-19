@@ -32,6 +32,19 @@ FEATURES: dict[str, tuple[str, float, str]] = {
 }
 
 
+# Gemini on Vertex is cheaper per call (approx: flash image ~$0.04/image; flash text fractions of a cent).
+_VERTEX_COST: dict[str, float] = {
+    "item_upload": 0.002, "extract": 0.01, "tryon": 0.10, "flatlay": 0.04, "llm": 0.005,
+}
+
+
+def _unit_cost(feature: str) -> float:
+    from app.services.ai_client import provider
+    if provider() == "vertex":
+        return _VERTEX_COST[feature]
+    return FEATURES[feature][1]
+
+
 def _quota(feature: str) -> int:
     return int(getattr(settings, FEATURES[feature][0]))
 
@@ -57,7 +70,8 @@ async def consume(db: AsyncSession, user_id: uuid.UUID, feature: str, units: int
     """Check limits and record usage. Raises 429 (user limit) or 503 (global budget)."""
     if feature not in FEATURES:
         raise ValueError(f"unknown feature {feature}")
-    _, unit_cost, message = FEATURES[feature]
+    _, _, message = FEATURES[feature]
+    unit_cost = _unit_cost(feature)
     if await used_today(db, user_id, feature) + units > _quota(feature):
         raise HTTPException(status_code=429, detail=message)
     if await spent_today(db) >= settings.DAILY_AI_BUDGET_USD:

@@ -25,12 +25,12 @@ import io
 import logging
 
 from app.services import storage
+from app.services.ai_client import ai_enabled, get_ai_client
 from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.clothing import ClothingItem
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -144,10 +144,10 @@ async def generate_flatlay(
     """
     import uuid as _uuid
 
-    if not settings.OPENAI_API_KEY:
+    if not ai_enabled():
         raise RuntimeError(
             "Flatlay generation requires an OpenAI API key (gpt-image-1). "
-            "Please add OPENAI_API_KEY to your .env."
+            "Please configure VERTEX_PROJECT (or OPENAI_API_KEY)."
         )
 
     # ── Fetch clothing items ──────────────────────────────────────────────────
@@ -206,8 +206,7 @@ async def generate_flatlay(
     )
 
     try:
-        from openai import AsyncOpenAI
-        client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        client = get_ai_client()
 
         canvas_io = io.BytesIO(canvas_bytes)
         canvas_io.name = "canvas.png"
