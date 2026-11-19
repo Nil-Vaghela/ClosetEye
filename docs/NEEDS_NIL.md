@@ -1,17 +1,28 @@
 # Needs Nil
 
-Decisions and accounts only Nil can provide. Work continues around these behind config flags.
+Things only Nil can do (accounts, money, keys). Step-by-step instructions are in `docs/LAUNCH-TONIGHT.md`.
 
-| # | Item | Blocks | Status |
-|---|---|---|---|
-| 1 | Rotate the Firebase Admin key `9f00efc2…` (firebase-adminsdk-fbsvc@closeteye-c2c03). Delete the old key in the console, create a new one, and keep it out of the repo. Approve the history rewrite + force-push. | DR-S9-01 | Open, **urgent** |
-| 2 | App identity: keep `com.closeteye.closeteye` / Firebase project `closeteye-c2c03`, or rename for Drape before the first store upload | DR-S9-84, 97 | Open |
-| 3 | Commercial virtual try-on provider (IDM-VTON is CC BY-NC-SA, non-commercial) | DR-S9-68 | Open |
-| 4 | `DAILY_AI_BUDGET_USD` value + OpenAI spend cap | DR-S9-62 | Open |
-| 5 | Firebase Blaze plan; staging + prod Firebase projects | DR-S9-22, 64, 82 | Open |
-| 6 | Postgres host: Neon (recommended) or Cloud SQL | DR-S9-82 | Open |
-| 7 | Domain name | DR-S9-71, 73, 77, 98 | Open |
-| 8 | Apple Developer ($99/yr) + Google Play Console ($25) | DR-S9-84, 96, 97 | Open |
-| 9 | Legal review of privacy policy + terms | DR-S9-77 | Open |
-| 10 | Final brand approval (icon, name) | DR-S9-95 | Open |
-| 11 | Beta tester list (30–50) | DR-S9-96 | Open |
+| # | Item | Status |
+|---|---|---|
+| 1 | Rotate the leaked Firebase Admin key `9f00efc2…` (see LAUNCH-TONIGHT §1). After that Claude untracks the old file. | **Open, urgent** |
+| 2 | Railway account + deploy (LAUNCH-TONIGHT §2) | Open |
+| 3 | Apple Developer ($99/yr) + Google Play Console ($25) accounts | Open |
+| 4 | Firebase test phone number for reviewers (LAUNCH-TONIGHT §3) | Open |
+| 5 | Support email inbox (goes on the legal pages via `SUPPORT_EMAIL`) | Open |
+| 6 | OpenAI monthly spend limit on platform.openai.com (backup to the in-app $15/day kill switch) | Open |
+| 7 | Back up `android/app/upload-keystore.jks` + `android/key.properties` | Open |
+| 8 | Legal review of `/legal/privacy` and `/legal/terms` wording | Open (fine to launch, review soon) |
+| 9 | Beta testers: 12+ for the Play closed test, 30–50 overall | Open |
+| 10 | Domain name (optional; the Railway domain works for launch) | Later |
+
+## Decided (co-founder calls, change any time)
+
+| Decision | Why |
+|---|---|
+| Keep app id `com.closeteye.closeteye` | Firebase apps are registered with it; users only see "Drape". |
+| Host on Railway (API + Postgres + volume) for launch | Fastest path tonight; Cloud Run + Firebase Storage later. |
+| Try on uses OpenAI gpt-image-1 (commercial use allowed), 3 per day; IDM-VTON off | IDM-VTON is non-commercial (CC BY-NC-SA). |
+| Daily AI budget $15 (`DAILY_AI_BUDGET_USD`) | Free app; paid features pause for the day, free ones keep working. |
+| "For you" suggestions use the free in-house engine, not GPT-4o | Zero cost and consistent with Today's Picks. |
+| Scanned items use real cutouts, not AI re-renders | Shows the user's actual garment, costs nothing. |
+| New app icon: gold hanger on warm ivory | Replaces the default Flutter icon (Apple rejects placeholders). |

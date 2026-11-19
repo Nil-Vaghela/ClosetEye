@@ -63,8 +63,12 @@ SERVER_URL=https://<your-railway-domain> ./scripts/build_release.sh both
   In App Store Connect create the app (bundle id `com.closeteye.closeteye`, name **Drape**).
 - **Android:** needs a Play Console account ($25 one time). Create the app, enable **Play App Signing**, upload
   `build/app/outputs/bundle/release/app-release.aab` to **Internal testing** first.
+  A signed test bundle already builds. Optional: Android Studio → Settings → Android SDK → SDK Tools →
+  tick **Android SDK Command-line Tools** so Flutter can strip debug symbols (smaller download).
 - **BACK UP** `android/app/upload-keystore.jks` and `android/key.properties` (password manager or a private drive).
   They're gitignored on purpose. Without them you can't ship Android updates without contacting Google.
+- New personal Play accounts must run a **closed test with 12+ testers for 14 days** before production.
+  Start the closed test tonight with your GSU testers; that clock is the real Android launch date.
 
 ## 5. Store listing text (copy and paste)
 

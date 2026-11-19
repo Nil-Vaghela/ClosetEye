@@ -3,8 +3,14 @@
 Source: `SPRINT-LAUNCH.md` (written for an Expo/React Native + Google/Apple login app called ClosetEye),
 mapped onto the real codebase: **Flutter + Firebase Phone Auth + FastAPI/Postgres, brand Drape**.
 
-Status: **PLAN ONLY, awaiting approval.** Nothing below has been built yet, except the outfit
-engine WIP commit (`1f532b6` on `wip/outfit-engine`).
+Status: **approved 2026-11-19. Launch cut built on branch `DR-S9-launch`.**
+
+Done for launch: DR-S9-02, 03, 04, 05, 06, 07, 08, 09 (Alembic URL; full squash deferred), 10, 11, 12 (threadpool;
+job queue deferred), 13, 14 (flags), 15, 16 (outfit engine), 17 (streak unified; tables merge deferred), 18, 19, 21 (wardrobe,
+outfits), 40, 41, 42, 60, 61, 62 (server side), 63 (LLM analyses), 74, 77, 83, 84 (Android signing + build script), 87, 95.
+Also: Android release manifest was missing INTERNET permission; default Flutter app icon replaced.
+
+Blocked on Nil: DR-S9-01 (key rotation). Everything else stays in the order below, after launch.
 
 ---
 
