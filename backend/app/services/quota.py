@@ -42,6 +42,8 @@ _VERTEX_COST: dict[str, float] = {
 def _unit_cost(feature: str) -> float:
     from app.services.ai_client import provider
     if provider() == "vertex":
+        if feature in ("extract", "flatlay") and settings.IMAGE_PROVIDER == "openai":
+            return FEATURES[feature][1]  # images still billed by OpenAI
         return _VERTEX_COST[feature]
     return FEATURES[feature][1]
 

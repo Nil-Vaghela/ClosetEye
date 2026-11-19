@@ -110,8 +110,16 @@ class _Chat:
 
 class _Images:
     def __init__(self, outer: "GeminiCompat"):
-        self.edit = outer._image_edit
-        self.generate = outer._image_generate
+        if settings.IMAGE_PROVIDER == "openai" and settings.OPENAI_API_KEY:
+            # Product photos / outfit boards via OpenAI gpt-image-1 (sharper catalog shots);
+            # text stays on Gemini and try-on on Google's dedicated model.
+            from openai import AsyncOpenAI
+            oa = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            self.edit = oa.images.edit
+            self.generate = oa.images.generate
+        else:
+            self.edit = outer._image_edit
+            self.generate = outer._image_generate
 
 
 class GeminiCompat:
