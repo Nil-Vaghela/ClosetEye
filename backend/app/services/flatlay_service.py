@@ -24,6 +24,8 @@ import base64
 import io
 import logging
 
+from app.core.config import settings
+
 from app.services import storage
 from app.services.ai_client import ai_enabled, get_ai_client
 from PIL import Image
@@ -221,7 +223,7 @@ async def generate_flatlay(
             images.append(garm_io)
 
         response = await client.images.edit(
-            model="gpt-image-1",
+            model=settings.OPENAI_IMAGE_MODEL,
             image=images,
             prompt=prompt,
             n=1,

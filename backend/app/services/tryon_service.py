@@ -479,7 +479,7 @@ async def _try_on_gpt(
         )
 
         response = await client.images.edit(
-            model="gpt-image-1",
+            model=settings.OPENAI_IMAGE_MODEL,
             image=[body_io, garm_io],
             prompt=prompt,
             n=1,
@@ -546,7 +546,7 @@ async def _try_on_gpt_multi(
         logger.info(f"gpt-image-1 multi [{categories}]: {len(images)} images")
 
         response = await client.images.edit(
-            model="gpt-image-1",
+            model=settings.OPENAI_IMAGE_MODEL,
             image=images,
             prompt=prompt,
             n=1,

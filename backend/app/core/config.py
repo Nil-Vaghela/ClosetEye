@@ -47,6 +47,7 @@ class Settings(BaseSettings):
 
     # ── External AI APIs ────────────────────────────────────
     OPENAI_API_KEY: str = ""
+    OPENAI_IMAGE_MODEL: str = "gpt-image-2"  # gpt-image-1 was retired by OpenAI
     REPLICATE_API_TOKEN: str = ""
     REMOVEBG_API_KEY: str = ""
     # IDM-VTON weights are CC BY-NC-SA (non-commercial). Off unless explicitly enabled for dev.

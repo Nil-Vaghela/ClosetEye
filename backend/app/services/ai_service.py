@@ -14,6 +14,8 @@ import base64
 import json
 import logging
 
+from app.core.config import settings
+
 import httpx
 
 
@@ -659,7 +661,7 @@ class AIService:
         png_io.name = "garment.png"  # SDK needs a filename for MIME detection
 
         response = await client.images.edit(
-            model="gpt-image-1",
+            model=settings.OPENAI_IMAGE_MODEL,
             image=png_io,
             prompt=prompt,
             n=1,
