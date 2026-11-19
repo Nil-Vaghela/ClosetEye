@@ -114,8 +114,15 @@ def delete_tree_for_user(user_id) -> int:
                 if f.is_file():
                     f.unlink()
                     removed += 1
+            # Directories may be virtual on Cloud Storage mounts; removing them is best effort.
             for sub in sorted(d.rglob("*"), reverse=True):
                 if sub.is_dir():
-                    sub.rmdir()
-            d.rmdir()
+                    try:
+                        sub.rmdir()
+                    except OSError:
+                        pass
+            try:
+                d.rmdir()
+            except OSError:
+                pass
     return removed
