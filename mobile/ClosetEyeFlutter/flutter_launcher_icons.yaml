@@ -1,0 +1,8 @@
+flutter_launcher_icons:
+  image_path: "assets/icon/drape_icon_1024.png"
+  android: "launcher_icon"
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#F8F4EE"
+  adaptive_icon_foreground: "assets/icon/drape_icon_foreground.png"

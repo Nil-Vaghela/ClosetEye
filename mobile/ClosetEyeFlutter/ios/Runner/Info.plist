@@ -40,6 +40,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>Drape uses your camera to snap photos of your clothes and your full body photo for try on.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
